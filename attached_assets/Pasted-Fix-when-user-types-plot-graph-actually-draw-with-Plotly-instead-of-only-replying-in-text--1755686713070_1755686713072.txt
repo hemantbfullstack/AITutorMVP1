@@ -1,0 +1,73 @@
+Fix: when user types “plot … / graph …”, actually draw with Plotly instead of only replying in text.
+
+A) Client – add intent detection + render hook in the chat
+1) In the main chat component (e.g., /client/src/pages/tutor/TutorChat.tsx or ChatPanel.tsx):
+   - Add a small parser and call the Graphs panel render function BEFORE sending to the server.
+
+Add (or update) code:
+
+// --- utils/parseGraphQuery.ts ---
+export function parseGraphQuery(msg: string) {
+  const m = msg
+    .replace(/–/g, "-")
+    .replace(/π/gi, String(Math.PI))
+    .toLowerCase()
+    .match(/(?:plot|graph)\s+(?:y\s*=\s*)?(.+?)(?:\s*(?:from|on)\s*\[?(-?\d*\.?\d+)\s*,\s*(-?\d*\.?\d+)\]?)?$/i);
+  if (!m) return null;
+  const exprs = m[1].split(",").map(s => s.trim());
+  const xmin = m[2] ? Number(m[2]) : -10;
+  const xmax = m[3] ? Number(m[3]) : 10;
+  return { functions: exprs, xmin, xmax };
+}
+
+2) Expose a Graphs renderer the chat can call.
+   - In GraphsPanel.tsx export a function via context or a simple event bus:
+
+// --- state/GraphsBus.ts ---
+export type GraphPayload = { functions: string[]; xmin: number; xmax: number };
+export function emitGraphRender(p: GraphPayload) {
+  window.dispatchEvent(new CustomEvent("app:graph:render", { detail: p }));
+}
+export function onGraphRender(cb: (p: GraphPayload) => void) {
+  const h = (e: Event) => cb((e as CustomEvent).detail);
+  window.addEventListener("app:graph:render", h as EventListener);
+  return () => window.removeEventListener("app:graph:render", h as EventListener);
+}
+
+3) In GraphsPanel.tsx listen to the event and render:
+   - If not present, create GraphsPanel with Plotly + mathjs (install if missing).
+   - On mount: onGraphRender(payload => draw(payload)) and bring the Graphs tab to front.
+
+4) In TutorChat.tsx, before sending the message, detect & render:
+
+import { parseGraphQuery } from "@/utils/parseGraphQuery";
+import { emitGraphRender } from "@/state/GraphsBus";
+
+async function handleSend(raw: string) {
+  const text = raw.trim();
+  const parsed = parseGraphQuery(text);
+  if (parsed) {
+    emitGraphRender(parsed);               // <— draw immediately
+    // show a small pill in the chat UI
+    addSystemNote(`Rendered graph: ${parsed.functions.join(", ")} on [${parsed.xmin}, ${parsed.xmax}]`);
+  }
+  await sendMessage(text);                 // still ask tutor to explain
+}
+
+B) Client – Plotly renderer (if missing)
+- In GraphsPanel.tsx use Plotly to plot each expression:
+  1) compile with mathjs: const f = math.compile(expr);
+  2) sample ~800 points between xmin..xmax → {x[], y[]}
+  3) Plotly.newPlot(div, traces, layout, {responsive:true})
+
+C) Remove blocking copy
+- In the server system prompt and any UI copy, delete/fix lines like “I cannot create graphs directly”.
+  Replace with: “I’ll show the graph and explain briefly.”
+
+D) QA (run now)
+- Type: Plot y = sin(x) from –2π to 2π   → Graphs tab opens and shows the curve, chat shows a “Rendered graph …” pill.
+- Type: graph y = x^2 - 3x + 2
+- Type: plot sin(x), cos(2x) on [-π, π]
+
+E) Optional Wolfram image
+- If WOLFRAM_APP_ID is set, keep a button “Get Wolfram Plot Image” below the Plotly chart that calls /api/tools/wolfram and shows the returned image.

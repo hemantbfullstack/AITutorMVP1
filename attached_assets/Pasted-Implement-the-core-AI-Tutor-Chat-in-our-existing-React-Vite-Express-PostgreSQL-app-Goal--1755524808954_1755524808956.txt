@@ -1,0 +1,110 @@
+Implement the core AI Tutor Chat in our existing React (Vite) + Express + PostgreSQL app.
+
+Goal:
+- Students can chat with an IB Math Tutor (AA/AI, HL/SL).
+- Tutor answers in IB style, step-by-step, with LaTeX math rendering.
+- Keep short conversation memory.
+- Save transcripts in DB for replay.
+
+Requirements:
+
+A) Backend (Express, TypeScript preferred)
+1) Environment:
+   - Use OPENAI_API_KEY from .env
+   - Add config for model name (default gpt-4o-mini or latest available)
+
+2) Routes:
+   - POST /api/tutor/message  (protected: requireAuth)
+     Body: { message: string, ibSubject: "AA"|"AI", ibLevel: "HL"|"SL", sessionId?: string }
+     Behavior:
+       * Validate input; reject empty message.
+       * Find or create a Session row for this user (if sessionId not provided, create new).
+       * Load up to last 10 messages (user/assistant) for short-term memory.
+       * Build a system prompt:
+         "You are an IB Mathematics Tutor for {ibSubject} {ibLevel}. Teach in authentic IB style with command terms, step-by-step reasoning, and clarity. Prefer worked examples, highlight calculator vs non-calculator approaches, and point out common IB mistakes. Use LaTeX for math."
+       * Call OpenAI Chat Completions with messages: [system, history, new user message].
+       * Stream the response back to client (Server-Sent Events or chunked transfer).
+       * On completion, persist the user and assistant messages to DB tied to the Session.
+       * Return { sessionId } so client can continue the same session.
+
+   - GET /api/tutor/session/:id  (protected)
+     * Returns session metadata and last N messages for replay.
+
+3) Streaming:
+   - Implement streaming response (SSE or chunked) from OpenAI to the client so the user sees tokens as they arrive.
+   - Include a non-streaming fallback for environments that don’t support it.
+
+4) Prisma schema (extend existing):
+   model Message {
+     id          String   @id @default(cuid())
+     sessionId   String
+     userId      String
+     role        String   // "user" | "assistant" | "system"
+     content     String
+     createdAt   DateTime @default(now())
+     Session     Session  @relation(fields: [sessionId], references: [id])
+   }
+   // Session already exists; ensure it has: id, userId, startedAt, optional endedAt, title?
+
+   - Migrate DB.
+
+5) Security & limits:
+   - requireAuth middleware on tutor routes.
+   - Add basic rate limiting per user: max 20 messages / 5 minutes (configurable).
+   - Validate message length (< 4k chars).
+   - Sanitize content saved to DB.
+
+6) Error handling:
+   - If OpenAI error, return 502 with: 
+     { error: "Tutor is temporarily unavailable. Please try again." }
+   - Log errors server-side.
+
+7) (Optional stub for later) Math routing:
+   - Add a simple flag in code for future intent detection (e.g., if message contains "integrate", "solve", "plot", etc.); for now just comment // TODO: route to Wolfram in Prompt #5.
+
+B) Frontend (React + Vite + Tailwind)
+1) Page: /tutor
+   - Layout: 
+     * Left: chat panel (full height with scroll)
+     * Bottom: input area (textbox + Send button)
+     * Top bar: shows subject/level
+   - Messages:
+     * Bubble styles for user vs tutor
+     * Render LaTeX using KaTeX or MathJax (install react-katex preferred; SSR not needed)
+   - Streaming UI:
+     * Show tokens as they stream in (typewriter effect)
+     * Loading indicator while waiting
+
+2) Message composer:
+   - Text input with "Enter" to send
+   - Dropdowns (defaulted from user profile): Subject (AA/AI) and Level (HL/SL)
+   - New chat button → starts a new session
+
+3) Session handling:
+   - On first send: create new session (no sessionId) → server responds with { sessionId } → store in state.
+   - Subsequent sends include sessionId.
+   - Add a simple session list (right-side drawer or small dropdown) to switch/replay recent sessions.
+   - Each message saved locally and rehydrated from /api/tutor/session/:id on load.
+
+4) Math rendering:
+   - Use react-katex:
+     * Auto-detect inline $...$ and block $$...$$ or use Markdown with code fences.
+     * Ensure styles are included.
+
+5) Styling polish:
+   - Keep it clean: card-like tutor messages, subtle borders, good spacing.
+   - Add small “Copy to clipboard” on tutor message (copies plain text and LaTeX).
+
+C) Config & Docs
+1) Add FRONTEND env config for API base (e.g., VITE_API_URL).
+2) Update README:
+   - How to set OPENAI_API_KEY
+   - How to run dev and test tutor chat
+   - How sessions are stored and replayed
+   - Known limits and next steps (Wolfram routing in Prompt #5)
+
+Deliverables:
+- POST /api/tutor/message streaming working.
+- /tutor page with chat UI, streaming, LaTeX rendering, session save/replay.
+- DB migrations applied and messages persisted.
+- README updated.

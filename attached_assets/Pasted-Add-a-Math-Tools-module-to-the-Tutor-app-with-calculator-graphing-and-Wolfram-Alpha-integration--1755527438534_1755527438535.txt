@@ -1,0 +1,61 @@
+Add a "Math Tools" module to the Tutor app with calculator, graphing, and Wolfram Alpha integration.
+
+Frontend (/client, React):
+1) Math Tools Panel:
+   - Add a sidebar/tabbed panel accessible from /tutor.
+   - Tabs: Calculator | Graphs | Wolfram.
+
+2) Calculator Tab:
+   - Implement basic calculator using math.js (arithmetic, trig, logs).
+   - UI: keypad + text input/output.
+   - History log showing previous calculations.
+   - Option to copy result into the chat input (so tutor can explain further).
+
+3) Graphs Tab:
+   - Use Plotly.js or Desmos API embed.
+   - Allow student to input function(s), e.g., y=sin(x), y=x^2+3x+2.
+   - Render graphs interactively with zoom/pan.
+   - Multiple functions with different colors.
+   - Button: “Send to Tutor” → pushes function into chat as context.
+
+4) Wolfram Tab:
+   - Input box → send query to backend → Wolfram Alpha API.
+   - Display both plaintext and image results from Wolfram.
+   - Error handling if API key not set or request fails.
+   - Add button “Explain with Tutor” → passes Wolfram output into chat context.
+
+Backend (/server, Express):
+1) Env:
+   - WOLFRAM_APP_ID in .env.
+
+2) Routes:
+   - POST /api/tools/calc
+     Body: { expression }
+     Uses math.js to evaluate.
+     Return { result } or error.
+
+   - POST /api/tools/graph
+     Body: { functions: [ "sin(x)", "x^2+3x+2" ], range? }
+     Validate + sanitize.
+     Return JSON of computed points (x, y arrays) or instruct frontend to render directly.
+
+   - POST /api/tools/wolfram
+     Body: { query }
+     Call Wolfram Alpha API with WOLFRAM_APP_ID.
+     Parse pods: return title, plaintext, images if available.
+     If key missing, return 501 { error: "Wolfram not configured" }.
+
+3) Security:
+   - requireAuth middleware on all routes.
+   - Basic rate limiting (prevent abuse of Wolfram API).
+
+Integration with Tutor Chat:
+1) Tutor can “call” tools if needed:
+   - If a tutor message includes a “tool hint” (e.g. “plot”, “calculate”, “Wolfram”), frontend offers a button “Run in Tools” to auto-open tab with input pre-filled.
+   - Later (Prompt #7), integrate more tightly with paper generator.
+
+Docs:
+1) README update:
+   - Add math.js, plotly.js, Wolfram API usage instructions.
+   - Show how to set WOLFRAM_APP_ID.
+   - Mention free tier limits on Wolfram.
