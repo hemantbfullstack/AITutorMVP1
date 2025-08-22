@@ -321,9 +321,12 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
     
     // Check for plot commands and render inline image
     const plotQuery = parsePlotQuery(message);
+    console.log("handleSendMessage plotQuery check:", { message, plotQuery });
     if (plotQuery) {
       try {
+        console.log("Fetching Wolfram image for:", plotQuery);
         const imageBase64 = await fetchWolframImage(plotQuery);
+        console.log("Got image data:", imageBase64.substring(0, 50) + "...");
         const plotMessage: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
@@ -332,7 +335,9 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           createdAt: new Date().toISOString(),
         };
         setMessages(prev => [...prev, plotMessage]);
+        console.log("Added plot message to chat");
       } catch (error: any) {
+        console.error("Wolfram image fetch error:", error);
         const errorMessage: Message = {
           id: crypto.randomUUID(),
           role: "assistant", 

@@ -10,11 +10,15 @@ export async function fetchWolframImage(query: string): Promise<string> {
     throw new Error(data.error || "Wolfram failed");
   }
   
+  // The server returns imageBase64 with data:image/png;base64, prefix
   return data.imageBase64;
 }
 
 export function parsePlotQuery(text: string): string | null {
   const normalizedText = text.replace(/–/g, "-").replace(/π/gi, "pi").trim();
+  // Match "Plot y = ..." pattern (case-insensitive)
   const match = normalizedText.match(/^(?:plot|graph)\s+(.+)/i);
-  return match ? `plot ${match[1]}` : null;
+  const result = match ? `plot ${match[1]}` : null;
+  console.log("parsePlotQuery:", { text, normalizedText, match: !!match, result });
+  return result;
 }
