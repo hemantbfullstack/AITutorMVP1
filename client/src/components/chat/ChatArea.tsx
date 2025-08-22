@@ -336,6 +336,13 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         };
         setMessages(prev => [...prev, plotMessage]);
         console.log("Added plot message to chat");
+        
+        // Also send to AI for explanation, but don't duplicate the plot
+        sendMessage.mutate({ 
+          message: `Explain this mathematical graph: ${plotQuery.replace(/^plot\s+/i, "")}`, 
+          useNonStream: false 
+        });
+        return; // Don't continue with normal message flow
       } catch (error: any) {
         console.error("Wolfram image fetch error:", error);
         const errorMessage: Message = {
@@ -345,6 +352,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           createdAt: new Date().toISOString(),
         };
         setMessages(prev => [...prev, errorMessage]);
+        return; // Don't continue with normal message flow
       }
     }
     
