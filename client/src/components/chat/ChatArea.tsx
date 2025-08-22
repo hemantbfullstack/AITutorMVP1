@@ -218,7 +218,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
     onSuccess: (data) => {
       // Add assistant message
       const assistantMessage: Message = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         role: "assistant",
         content: data.content,
         createdAt: new Date().toISOString(),
@@ -337,11 +337,13 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         setMessages(prev => [...prev, plotMessage]);
         console.log("Added plot message to chat");
         
-        // Also send to AI for explanation, but don't duplicate the plot
-        sendMessage.mutate({ 
-          message: `Explain this mathematical graph: ${plotQuery.replace(/^plot\s+/i, "")}`, 
-          useNonStream: false 
-        });
+        // Send to AI for explanation after a small delay to ensure plot message is rendered
+        setTimeout(() => {
+          sendMessage.mutate({ 
+            message: `Explain this mathematical graph: ${plotQuery.replace(/^plot\s+/i, "")}`, 
+            useNonStream: false 
+          });
+        }, 100);
         return; // Don't continue with normal message flow
       } catch (error: any) {
         console.error("Wolfram image fetch error:", error);
@@ -375,7 +377,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         
         // Add system note to chat
         const systemNote: Message = {
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           role: "system",
           content: `📊 Rendered graph: ${graphData.functions.join(", ")} on [${graphData.xmin}, ${graphData.xmax}]`,
           createdAt: new Date().toISOString(),
