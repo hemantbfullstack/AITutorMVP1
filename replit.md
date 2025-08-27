@@ -11,6 +11,7 @@ Preferred communication style: Simple, everyday language.
 ## Environment Variables Support (Latest)
 - Added dotenv support for local development without creating .env files in repository
 - Windows compatibility: Users need to use `cross-env NODE_ENV=development tsx server/index.ts` instead of `npm run dev`
+- Fixed Windows ENOTSUP error by automatically binding to `localhost` for local development, `0.0.0.0` for Replit
 - Created SETUP.md with detailed local development instructions
 - Fixed Git push protection issues by removing API keys from commit history
 

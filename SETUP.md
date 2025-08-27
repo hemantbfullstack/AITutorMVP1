@@ -52,6 +52,10 @@ npm install -g cross-env
 cross-env NODE_ENV=development tsx server/index.ts
 ```
 
+**Common Windows Issues Fixed:**
+- ✅ `ENOTSUP: operation not supported on socket 0.0.0.0:5000` - Server now automatically uses `localhost` for local development
+- ✅ `NODE_ENV not recognized` - Use `cross-env` command as shown above
+
 ## Notes
 
 - In Replit environment, environment variables are automatically provided
