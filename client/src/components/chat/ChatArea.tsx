@@ -34,7 +34,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   const [ibSubject, setIbSubject] = useState<"AA" | "AI">("AA");
   const [ibLevel, setIbLevel] = useState<"HL" | "SL">("HL");
   const [selfTestResult, setSelfTestResult] = useState<string | null>(null);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -54,11 +54,16 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
 
   const fetchSession = async () => {
     if (!currentSessionId) return;
-    
+
     try {
       const response = await apiRequest("GET", `/api/tutor/session/${currentSessionId}`);
       const data = await response.json();
-      setMessages(data.messages || []);
+      
+      // Only update messages if we don't have any current messages
+      // This prevents overwriting user messages that haven't been sent yet
+      if (messages.length === 0) {
+        setMessages(data.messages || []);
+      }
     } catch (error) {
       console.error("Error fetching session:", error);
     }
@@ -68,6 +73,12 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingMessage]);
+
+  // Debug logging for message changes
+  useEffect(() => {
+    console.log("Messages state updated:", messages.length, "messages");
+    console.log("Current session ID:", currentSessionId);
+  }, [messages, currentSessionId]);
 
   // Listen for sendToChat events from tools
   useEffect(() => {
@@ -102,12 +113,12 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         credentials: "include",
         body: JSON.stringify({}),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Self-test failed");
       }
-      
+
       return await response.json();
     },
     onSuccess: (data: any) => {
@@ -145,9 +156,18 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
       if (!trimmed) {
         throw new Error("Message cannot be empty");
       }
-      
+
       setIsStreaming(true);
       setStreamingMessage("");
+
+      // Add user message immediately to ensure it's visible
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: trimmed,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, userMessage]);
 
       const url = useNonStream ? "/api/tutor/message?mode=nonstream" : "/api/tutor/message";
       const response = await fetch(url, {
@@ -172,15 +192,6 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         throw errorWithCode;
       }
 
-      // Add user message immediately
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        role: "user",
-        content: trimmed,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, userMessage]);
-
       if (useNonStream) {
         // Handle non-streaming response
         const data = await response.json();
@@ -198,7 +209,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
             if (done) break;
 
             const chunk = decoder.decode(value);
-            
+
             // Check for session ID
             if (chunk.includes("__SESSION_ID__")) {
               const sessionIdMatch = chunk.match(/__SESSION_ID__(.+)/);
@@ -226,14 +237,17 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingMessage("");
       setIsStreaming(false);
-      
+
       // Refresh sessions list
       queryClient.invalidateQueries({ queryKey: ["/api/tutor/sessions"] });
     },
     onError: (error: any) => {
       setIsStreaming(false);
       setStreamingMessage("");
-      
+
+      // Remove the user message if there was an error
+      setMessages(prev => prev.filter(msg => msg.role !== "user" || msg.content !== error.originalMessage));
+
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -245,11 +259,11 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         }, 500);
         return;
       }
-      
+
       // Handle specific error codes with better messages
       let errorTitle = "Error";
       let errorDescription = error.message;
-      
+
       switch (error.code) {
         case "MISSING_API_KEY":
           errorTitle = "Configuration Error";
@@ -276,13 +290,13 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           errorDescription = "Please check your message format.";
           break;
       }
-      
+
       toast({
         title: errorTitle,
         description: errorDescription,
         variant: "destructive",
       });
-      
+
       // Auto-retry with non-streaming if server suggests it
       if (error.retryWithNonStream && !error.isRetry) {
         toast({
@@ -290,9 +304,9 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           description: "Switching to non-streaming mode...",
         });
         setTimeout(() => {
-          sendMessage.mutate({ 
-            message: error.originalMessage || "", 
-            useNonStream: true 
+          sendMessage.mutate({
+            message: error.originalMessage || "",
+            useNonStream: true
           });
         }, 1000);
       }
@@ -301,7 +315,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
 
   const handleSendMessageWithImage = (message: string, imageBase64: string) => {
     if (!message.trim()) return;
-    
+
     // Add message with image to chat
     const imageMessage: Message = {
       id: crypto.randomUUID(),
@@ -311,14 +325,14 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
       createdAt: new Date().toISOString(),
     };
     setMessages(prev => [...prev, imageMessage]);
-    
+
     // Also send the message content to the AI tutor for explanation
     sendMessage.mutate({ message: `Please explain this graph: ${message}`, useNonStream: false });
   };
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
-    
+
     // Check for plot commands and render inline image
     const plotQuery = parsePlotQuery(message);
     console.log("handleSendMessage plotQuery check:", { message, plotQuery });
@@ -336,12 +350,12 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         };
         setMessages(prev => [...prev, plotMessage]);
         console.log("Added plot message to chat");
-        
+
         // Send to AI for explanation after a small delay to ensure plot message is rendered
         setTimeout(() => {
-          sendMessage.mutate({ 
-            message: `Explain this mathematical graph: ${plotQuery.replace(/^plot\s+/i, "")}`, 
-            useNonStream: false 
+          sendMessage.mutate({
+            message: `Explain this mathematical graph: ${plotQuery.replace(/^plot\s+/i, "")}`,
+            useNonStream: false
           });
         }, 100);
         return; // Don't continue with normal message flow
@@ -349,7 +363,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         console.error("Wolfram image fetch error:", error);
         const errorMessage: Message = {
           id: crypto.randomUUID(),
-          role: "assistant", 
+          role: "assistant",
           content: `Couldn't render with Wolfram: ${error?.message || "unknown error"}`,
           createdAt: new Date().toISOString(),
         };
@@ -357,7 +371,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         return; // Don't continue with normal message flow
       }
     }
-    
+
     // First check for graph plotting intent
     if (detectGraphIntent(message)) {
       const graphData = parseGraphQuery(message);
@@ -368,13 +382,13 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           xmin: graphData.xmin,
           xmax: graphData.xmax
         });
-        
+
         // Show notification that graph was rendered
         toast({
           title: "Graph Rendered",
           description: `Plotted: ${graphData.functions.join(", ")} on [${graphData.xmin}, ${graphData.xmax}]`,
         });
-        
+
         // Add system note to chat
         const systemNote: Message = {
           id: crypto.randomUUID(),
@@ -385,14 +399,14 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         setMessages(prev => [...prev, systemNote]);
       }
     }
-    
+
     // Check for drawing/visual intent (triangles, shapes)
     const drawingIntent = detectDrawingIntent(message);
     if (drawingIntent && onTriggerVisual) {
       const action = createUIAction(drawingIntent);
       if (action) {
         onTriggerVisual(action);
-        
+
         // Show toast notification
         if (action.type === "triangle") {
           toast({
@@ -402,8 +416,8 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         }
       }
     }
-    
-    // Send message to tutor
+
+    // Send message to tutor - this will handle adding the user message
     sendMessage.mutate({ message, useNonStream: false });
   };
 
@@ -411,10 +425,15 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
     setCurrentSessionId(null);
     setMessages([]);
     setStreamingMessage("");
+    setIsStreaming(false);
   };
 
   const handleSessionSelect = (sessionId: string) => {
-    setCurrentSessionId(sessionId);
+    // Only change session if it's different from current
+    if (sessionId !== currentSessionId) {
+      setCurrentSessionId(sessionId);
+      // Don't clear messages here - let fetchSession handle it
+    }
   };
 
   return (
@@ -448,7 +467,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={() => selfTest.mutate()}
@@ -463,14 +482,14 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
               {selfTestResult}
             </span>
           )}
-          <Button 
+          <Button
             className="lg:hidden bg-primary text-white"
             onClick={onToggleMobileTools}
             data-testid="button-toggle-tools"
           >
             <i className="fas fa-calculator mr-1"></i> Tools
           </Button>
-          <Button 
+          <Button
             variant="outline"
             onClick={handleNewChat}
             data-testid="button-new-chat"
@@ -540,11 +559,11 @@ What would you like to work on today?`}
       </div>
 
       {/* Message Input */}
-      <MessageInput 
+      <MessageInput
         onSendMessage={(message) => {
           const trimmed = message.trim();
           if (!trimmed) return;
-          
+
           handleSendMessage(trimmed);
         }}
         disabled={sendMessage.isPending || isStreaming}
