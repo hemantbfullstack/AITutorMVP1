@@ -507,10 +507,11 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
         return res.status(501).json({ error: "TTS not configured" });
       }
 
-      const defaultVoiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
+      // Use the provided voiceId or fall back to default
+      const selectedVoiceId = voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
       const defaultModel = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
       
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId || defaultVoiceId}`, {
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',
@@ -524,6 +525,9 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
             stability: 0.5,
             similarity_boost: 0.5,
           },
+          // Add optimization flags
+          output_format: "mp3_44100_128", // Optimized format
+          latency_optimization_level: 3, // Maximum latency optimization
         }),
       });
 
@@ -531,11 +535,9 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
         throw new Error(`ElevenLabs API error: ${response.status}`);
       }
 
-      const audioBuffer = await response.arrayBuffer();
-      
+      // Stream the response directly for better performance
       res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Content-Length', audioBuffer.byteLength.toString());
-      res.send(Buffer.from(audioBuffer));
+      response.body.pipe(res);
       
     } catch (error) {
       console.error("TTS error:", error);

@@ -1,25 +1,58 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import "katex/dist/katex.min.css";
+import { 
+  Pause, 
+  Play, 
+  Copy
+} from 'lucide-react';
 
 interface MessageBubbleProps {
   role: "user" | "assistant" | "system";
   content: string;
-  image?: string; // data URL for inline images
-  timestamp: string;
+  image?: string;
+  timestamp?: string;
   isStreaming?: boolean;
+  selectedVoiceId?: string;
 }
 
-export default function MessageBubble({ role, content, image, timestamp, isStreaming }: MessageBubbleProps) {
+export default function MessageBubble({ 
+  role, 
+  content, 
+  image, 
+  timestamp, 
+  isStreaming,
+  selectedVoiceId
+}: MessageBubbleProps) {
   // Debug logging
   if (image) {
     console.log("MessageBubble rendering with image:", image.substring(0, 50) + "...");
   }
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+
+  // Create cache key for this specific text + voice combination
+  const cacheKey = useMemo(() => {
+    return `${selectedVoiceId}-${content.substring(0, 100)}`; // First 100 chars for cache key
+  }, [selectedVoiceId, content]);
+
+
+
+
+
+  // Reset audio when voice changes
+  useEffect(() => {
+    if (audioUrl) {
+      setAudioUrl(null);
+      setIsPlaying(false);
+    }
+    // Clear cache when voice changes to avoid mixing voices
+    sessionStorage.removeItem(cacheKey);
+  }, [selectedVoiceId, cacheKey]);
 
   // Render LaTeX content
   const renderContent = (text: string) => {
@@ -66,31 +99,47 @@ export default function MessageBubble({ role, content, image, timestamp, isStrea
 
     try {
       setIsPlaying(true);
+      setIsLoading(true);
       
-      if (!audioUrl) {
-        const response = await fetch("/api/voice/tts", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ text: content }),
-        });
-
-        if (!response.ok) {
-          throw new Error("TTS service unavailable");
-        }
-
-        const audioBlob = await response.blob();
-        const url = URL.createObjectURL(audioBlob);
-        setAudioUrl(url);
-        
+      // Check cache first when user clicks play
+      const cachedAudio = sessionStorage.getItem(cacheKey);
+      if (cachedAudio) {
+        setAudioUrl(cachedAudio);
         if (audioRef.current) {
-          audioRef.current.src = url;
+          audioRef.current.src = cachedAudio;
           audioRef.current.play();
         }
-      } else {
-        audioRef.current?.play();
+        setIsLoading(false);
+        return;
+      }
+
+      // Only make TTS API call if not cached and user explicitly clicked play
+      const response = await fetch("/api/voice/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ 
+          text: content,
+          voiceId: selectedVoiceId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("TTS service unavailable");
+      }
+
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+      
+      // Cache the audio URL for future use
+      sessionStorage.setItem(cacheKey, url);
+      setAudioUrl(url);
+      
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.play();
       }
     } catch (error) {
       setIsPlaying(false);
@@ -99,6 +148,8 @@ export default function MessageBubble({ role, content, image, timestamp, isStrea
         description: "Text-to-speech is temporarily unavailable",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -124,81 +175,110 @@ export default function MessageBubble({ role, content, image, timestamp, isStrea
 
   if (role === "user") {
     return (
-      <div className="flex items-start space-x-3 justify-end">
-        <div className="bg-primary text-white rounded-lg px-4 py-3 max-w-2xl">
-          <div className="text-white">
+      <div className="flex gap-3 mb-6 justify-end">
+        <div className="flex-1 max-w-3xl">
+          <div className="bg-blue-500 text-white rounded-lg p-4">
             {renderContent(content)}
           </div>
+          {timestamp && (
+            <div className="text-xs text-gray-500 mt-2 text-right">{timestamp}</div>
+          )}
         </div>
-        <div className="w-8 h-8 bg-slate-300 rounded-full flex items-center justify-center flex-shrink-0">
-          <i className="fas fa-user text-slate-600 text-sm"></i>
+        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+          You
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex items-start space-x-3">
-      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-        <i className="fas fa-robot text-white text-sm"></i>
-      </div>
-      <div className="bg-white rounded-lg px-4 py-3 shadow-sm border border-slate-200 max-w-2xl">
-        <div className="text-slate-800 mb-3">
-          <div className="space-y-3">
-            {/* Always render the text content */}
-            <div>{renderContent(content)}</div>
-            
-            {/* Render image if present */}
+  if (role === "assistant" || role === "system") {
+    return (
+      <div className="flex gap-3 mb-6">
+        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-medium">
+          AI
+        </div>
+        
+        <div className="flex-1 max-w-3xl space-y-2">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             {image && (
-              <div className="border border-slate-200 rounded-lg p-2 bg-slate-50">
+              <div className="mb-3">
                 <img 
                   src={image} 
-                  alt="Generated visualization" 
-                  className="max-w-full h-auto rounded border border-slate-300 bg-white"
-                  style={{ 
-                    maxWidth: "100%", 
-                    maxHeight: "400px",
-                    objectFit: "contain"
-                  }}
+                  alt="Generated content" 
+                  className="max-w-full rounded-lg"
                 />
               </div>
             )}
+            
+            <div className="prose prose-sm max-w-none">
+              {isStreaming ? (
+                <div className="text-gray-700">
+                  {content}
+                  <span className="animate-pulse">▊</span>
+                </div>
+              ) : (
+                renderContent(content)
+              )}
+            </div>
           </div>
-          {isStreaming && <span className="animate-pulse">|</span>}
-        </div>
-
-        {!isStreaming && (
-          <div className="flex items-center space-x-2 text-sm">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePlayVoice}
-              className="text-primary hover:text-blue-700 p-0 h-auto font-normal"
-              data-testid="button-play-voice"
-            >
-              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play-circle'} mr-1`}></i>
-              {isPlaying ? 'Pause' : 'Play Voice'}
+          
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+                         <Button
+               variant="outline"
+               size="sm"
+               onClick={handlePlayVoice}
+               disabled={isLoading || isStreaming}
+               className="flex items-center gap-2"
+             >
+                             {isLoading ? (
+                 <>
+                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                   Loading...
+                 </>
+               ) : isPlaying ? (
+                 <>
+                   <Pause className="w-4 h-4" />
+                   Pause
+                 </>
+               ) : isStreaming ? (
+                 <>
+                   <Play className="w-4 h-4" />
+                   Wait for completion...
+                 </>
+               ) : (
+                 <>
+                   <Play className="w-4 h-4" />
+                   Play Voice
+                 </>
+               )}
             </Button>
+            
+            {/* Copy button */}
+            
             <Button
               variant="ghost"
               size="sm"
               onClick={handleCopyToClipboard}
-              className="text-slate-500 hover:text-slate-700 p-0 h-auto font-normal"
-              data-testid="button-copy"
+              className="text-gray-500 hover:text-gray-700"
             >
-              <i className="fas fa-copy mr-1"></i>
-              Copy
+              <Copy className="w-4 h-4" />
             </Button>
           </div>
-        )}
-
-        <audio 
+          
+          {timestamp && (
+            <div className="text-xs text-gray-500">{timestamp}</div>
+          )}
+        </div>
+        
+        <audio
           ref={audioRef}
           onEnded={handleAudioEnded}
           onError={() => setIsPlaying(false)}
-          style={{ display: 'none' }}
         />
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }

@@ -12,6 +12,8 @@ import { parseGraphQuery, detectGraphIntent } from "@/lib/parseGraphQuery";
 import { emitGraphRender } from "@/lib/graphBus";
 import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { fetchWolframImage, parsePlotQuery } from "@/utils/wolframClient";
+import TutorSelector from './TutorSelector';
+import { Play, Pause, Volume2, CheckCircle, GraduationCap, User, Copy, Settings } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -34,10 +36,28 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   const [ibSubject, setIbSubject] = useState<"AA" | "AI">("AA");
   const [ibLevel, setIbLevel] = useState<"HL" | "SL">("HL");
   const [selfTestResult, setSelfTestResult] = useState<string | null>(null);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>("21m00Tcm4TlvDq8ikWAM"); // Default to Rachel
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Load voice preference from localStorage
+  useEffect(() => {
+    const savedVoiceId = localStorage.getItem('selectedVoiceId');
+    if (savedVoiceId) {
+      setSelectedVoiceId(savedVoiceId);
+    }
+  }, []);
+
+  // Save voice preference to localStorage
+  const handleVoiceChange = (voiceId: string) => {
+    setSelectedVoiceId(voiceId);
+    localStorage.setItem('selectedVoiceId', voiceId);
+    
+    // Force re-render of all message bubbles
+    setMessages(prev => [...prev]);
+  };
 
   // Fetch sessions
   const { data: sessions } = useQuery({
@@ -499,7 +519,29 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         </div>
       </div>
 
-      {/* Chat Messages */}
+      {/* Header with Tutor Selection */}
+      <div className="border-b border-gray-200 px-6 py-4 bg-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-semibold text-gray-900">AI Tutor</h2>
+            <TutorSelector
+              selectedVoiceId={selectedVoiceId}
+              onVoiceChange={handleVoiceChange}
+            />
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleMobileTools}
+            className="md:hidden"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {/* Welcome Message */}
         {messages.length === 0 && !isStreaming && (
@@ -514,17 +556,20 @@ ${ibLevel === "HL" ? "• Calculus" : ""}
 
 What would you like to work on today?`}
             timestamp={new Date().toISOString()}
+            selectedVoiceId={selectedVoiceId}
           />
         )}
 
         {/* Session Messages */}
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <MessageBubble
-            key={message.id}
+            key={`${index}-${selectedVoiceId}`} // Force re-render when voice changes
             role={message.role}
             content={message.content}
             image={message.image}
             timestamp={message.createdAt}
+            isStreaming={isStreaming && index === messages.length - 1}
+            selectedVoiceId={selectedVoiceId}
           />
         ))}
 
@@ -535,6 +580,7 @@ What would you like to work on today?`}
             content={streamingMessage}
             timestamp={new Date().toISOString()}
             isStreaming
+            selectedVoiceId={selectedVoiceId}
           />
         )}
 
