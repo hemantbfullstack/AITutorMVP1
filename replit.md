@@ -6,6 +6,14 @@ This is an AI-powered IB Mathematics tutoring platform built with React, Express
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes
+
+## Environment Variables Support (Latest)
+- Added dotenv support for local development without creating .env files in repository
+- Windows compatibility: Users need to use `cross-env NODE_ENV=development tsx server/index.ts` instead of `npm run dev`
+- Created SETUP.md with detailed local development instructions
+- Fixed Git push protection issues by removing API keys from commit history
+
 # System Architecture
 
 ## Frontend Architecture

@@ -40,8 +40,17 @@ export PORT=5000
 
 1. Install dependencies: `npm install`
 2. Set up environment variables (see above)
-3. Start the development server: `npm run dev`
+3. Start the development server:
+   - **Windows**: `cross-env NODE_ENV=development tsx server/index.ts`
+   - **Mac/Linux**: `npm run dev`
 4. Open your browser to `http://localhost:5000`
+
+### Windows Users
+If you get the error `'NODE_ENV' is not recognized as an internal or external command`, use the cross-env command above or run:
+```bash
+npm install -g cross-env
+cross-env NODE_ENV=development tsx server/index.ts
+```
 
 ## Notes
 
