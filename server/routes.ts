@@ -49,6 +49,15 @@ const paperGenRateLimit = rateLimit({
   message: { error: "Too many paper generation requests. Please wait." },
 });
 
+// Helper function to get user ID in both Replit and local environments
+function getUserId(req: any): string {
+  const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
+  if (!isReplitEnvironment || req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
+    return "local-dev-user";
+  }
+  return req.user.claims.sub;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -59,7 +68,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check if we're running in local development or accessing via localhost
+      const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
+      const isLocalAccess = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
+      
+      if (!isReplitEnvironment || isLocalAccess) {
+        // Local development - ensure user exists and return it
+        const mockUser = {
+          id: "local-dev-user",
+          email: "developer@localhost",
+          firstName: "Local",
+          lastName: "Developer",
+          profileImageUrl: null,
+        };
+        
+        try {
+          // Try to get existing user
+          await storage.getUser(mockUser.id);
+        } catch {
+          // User doesn't exist, create it
+          await storage.upsertUser(mockUser);
+        }
+        
+        return res.json(mockUser);
+      }
+
+      const userId = getUserId(req);
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -122,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const isNonStreamMode = req.query.mode === 'nonstream';
     
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
       const { message, ibSubject, ibLevel, sessionId } = tutorMessageSchema.parse(req.body);
 
       // Validate OpenAI API key
@@ -314,7 +348,7 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
 
   app.get('/api/tutor/session/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
       const session = await storage.getTutorSession(req.params.id);
       
       if (!session || session.userId !== userId) {
@@ -335,7 +369,7 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
 
   app.get('/api/tutor/sessions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
       const sessions = await storage.getTutorSessionsByUser(userId);
       res.json(sessions);
     } catch (error) {
@@ -559,7 +593,7 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
 
   app.get('/api/papers/:paperId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
       const { paperId } = req.params;
 
       const paper = await storage.getGeneratedPaper(paperId);
@@ -582,7 +616,7 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
 
   app.get('/api/papers', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
       const papers = await storage.getGeneratedPapersByUser(userId);
       res.json(papers);
       
@@ -594,7 +628,7 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
 
   app.post('/api/papers/:paperId/pdf', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req);
       const { paperId } = req.params;
       const { type } = req.body; // "paper" | "markscheme"
 
