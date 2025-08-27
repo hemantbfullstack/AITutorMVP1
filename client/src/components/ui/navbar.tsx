@@ -30,8 +30,8 @@ export default function Navbar() {
             <div className="hidden md:flex space-x-4">
               {navItems.map(({ path, label, icon: Icon }) => (
                 <Link key={path} href={path}>
-                  <a
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  <div
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                       location === path
                         ? "bg-blue-100 text-blue-700"
                         : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -40,7 +40,7 @@ export default function Navbar() {
                   >
                     <Icon className="w-4 h-4 mr-2" />
                     {label}
-                  </a>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -80,8 +80,8 @@ export default function Navbar() {
           <div className="flex space-x-1">
             {navItems.map(({ path, label, icon: Icon }) => (
               <Link key={path} href={path}>
-                <a
-                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                <div
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                     location === path
                       ? "bg-blue-100 text-blue-700"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -90,7 +90,7 @@ export default function Navbar() {
                 >
                   <Icon className="w-4 h-4 mr-2" />
                   {label}
-                </a>
+                </div>
               </Link>
             ))}
           </div>

@@ -151,8 +151,8 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // In local development or accessing via localhost, always allow access
-  if (!isReplitEnvironment || req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
+  // In local development or accessing via localhost/local IPs, always allow access
+  if (!isReplitEnvironment || req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '0.0.0.0') {
     return next();
   }
 
