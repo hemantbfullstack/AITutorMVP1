@@ -1,3 +1,12 @@
+// Load environment variables from .env file in local development (before other imports)
+try {
+  if (!process.env.REPLIT_DOMAINS && !process.env.REPL_ID) {
+    require("dotenv").config();
+  }
+} catch (error) {
+  // dotenv is optional - will use system environment variables if not available
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
