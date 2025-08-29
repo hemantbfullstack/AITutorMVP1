@@ -66,17 +66,10 @@ app.use((req, res, next) => {
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  // Use localhost for local development, 0.0.0.0 for Replit
-  const host = process.env.REPLIT_DOMAINS || process.env.REPL_ID ? "0.0.0.0" : "localhost";
+  // Use IPv4 localhost for local development, 0.0.0.0 for Replit
+  const host = process.env.REPLIT_DOMAINS || process.env.REPL_ID ? "0.0.0.0" : "127.0.0.1";
   
-  server.listen(
-    {
-      port,
-      host,
-      reusePort: true,
-    },
-    () => {
-      log(`serving on ${host}:${port}`);
-    },
-  );
+  server.listen(port, host, () => {
+    log(`serving on ${host}:${port}`);
+  });
 })();
