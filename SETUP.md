@@ -14,14 +14,20 @@ OPENAI_API_KEY=your_openai_api_key_here
 # Port configuration
 PORT=5000
 
+# Optional: ElevenLabs API Key for text-to-speech
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+ELEVENLABS_MODEL=eleven_multilingual_v2
+
 # Optional: Database URL for local PostgreSQL database
 # DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 
-# Optional: ElevenLabs API Key for text-to-speech
-# ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-
 # Optional: Wolfram Alpha API Key for advanced math queries  
 # WOLFRAM_APP_ID=your_wolfram_app_id_here
+
+# DO NOT ADD THESE FOR LOCAL DEVELOPMENT:
+# REPLIT_DOMAINS (only for Replit environment)
+# REPL_ID (only for Replit environment)
 ```
 
 ### Option 2: Set system environment variables
@@ -55,6 +61,7 @@ cross-env NODE_ENV=development tsx server/index.ts
 **Common Windows Issues Fixed:**
 - ✅ `ENOTSUP: operation not supported on socket 0.0.0.0:5000` - Server now automatically uses `localhost` for local development
 - ✅ `NODE_ENV not recognized` - Use `cross-env` command as shown above
+- ✅ **Login issues** - Don't add `REPLIT_DOMAINS` to your .env file. The app automatically creates a local dev user for you.
 
 ## Notes
 
