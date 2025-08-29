@@ -35,13 +35,13 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || "local-dev-secret-key-only-for-development",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isReplitEnvironment, // Only secure in production (Replit), not in local development
       maxAge: sessionTtl,
     },
   });

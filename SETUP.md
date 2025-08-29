@@ -22,6 +22,9 @@ ELEVENLABS_MODEL=eleven_multilingual_v2
 # Optional: Database URL for local PostgreSQL database
 # DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 
+# Optional: Session secret (will use default for local development if not provided)
+# SESSION_SECRET=your_random_session_secret_here
+
 # Optional: Wolfram Alpha API Key for advanced math queries  
 # WOLFRAM_APP_ID=your_wolfram_app_id_here
 
