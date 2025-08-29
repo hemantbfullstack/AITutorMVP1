@@ -65,7 +65,17 @@ cross-env NODE_ENV=development tsx server/index.ts
 - ✅ `ENOTSUP: operation not supported on socket 0.0.0.0:5000` - Server now uses IPv4 `127.0.0.1` for local development 
 - ✅ `ENOTSUP: operation not supported on socket ::1:5000` - Fixed IPv6 binding issue on Windows
 - ✅ `NODE_ENV not recognized` - Use `cross-env` command as shown above
-- ✅ **Login issues** - Don't add `REPLIT_DOMAINS` to your .env file. The app automatically creates a local dev user for you.
+
+## Local Development Authentication
+
+The application now uses **real database authentication** for local development:
+
+1. **Create Account**: Visit `http://localhost:5000` and click "Sign Up"
+2. **Login**: Use your email and password to log in
+3. **Database**: Your user data is stored in PostgreSQL database
+4. **Sessions**: Secure session management with cookies
+
+**No need for REPLIT_DOMAINS** - the app automatically detects local vs. Replit environment.
 
 ## Notes
 

@@ -26,6 +26,10 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
+  // Local authentication operations
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createLocalUser(user: { email: string; firstName: string; lastName: string; password: string }): Promise<User>;
+  
   // Tutor session operations
   getTutorSession(id: string): Promise<TutorSession | undefined>;
   getTutorSessionsByUser(userId: string): Promise<TutorSession[]>;
@@ -69,6 +73,23 @@ export class DatabaseStorage implements IStorage {
           ...userData,
           updatedAt: new Date(),
         },
+      })
+      .returning();
+    return user;
+  }
+
+  // Local authentication operations
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createLocalUser(userData: { email: string; firstName: string; lastName: string; password: string }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        isLocalUser: true,
       })
       .returning();
     return user;

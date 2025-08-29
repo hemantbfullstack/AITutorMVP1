@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "wouter";
 
 export default function Landing() {
   const { isLoading } = useAuth();
@@ -25,12 +26,14 @@ export default function Landing() {
             <span className="text-xl font-semibold text-slate-900">AI Tutor</span>
           </div>
           
-          <Button 
-            onClick={() => window.location.href = '/api/login'}
-            className="bg-primary hover:bg-blue-700"
-          >
-            Sign In
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" asChild>
+              <Link href="/login">Sign In</Link>
+            </Button>
+            <Button asChild className="bg-primary hover:bg-blue-700">
+              <Link href="/signup">Sign Up</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -45,13 +48,14 @@ export default function Landing() {
             Get personalized, step-by-step help for IB Math AA and AI with our advanced AI tutor. 
             Complete with interactive tools, voice assistance, and comprehensive practice materials.
           </p>
-          <Button 
-            size="lg"
-            onClick={() => window.location.href = '/api/login'}
-            className="bg-primary hover:bg-blue-700 text-lg px-8 py-4"
-          >
-            Start Learning Now
-          </Button>
+          <div className="flex items-center justify-center space-x-4">
+            <Button size="lg" asChild className="bg-primary hover:bg-blue-700 text-lg px-8 py-4">
+              <Link href="/signup">Start Learning Now</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild className="text-lg px-8 py-4">
+              <Link href="/login">Already have an account?</Link>
+            </Button>
+          </div>
         </div>
 
         {/* Features Grid */}

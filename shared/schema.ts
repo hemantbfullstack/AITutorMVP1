@@ -24,13 +24,16 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Replit Auth
+// User storage table for authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  // Local development authentication fields
+  password: varchar("password"), // For local development login
+  isLocalUser: boolean("is_local_user").default(false), // Flag to identify local vs Replit users
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -131,6 +134,27 @@ export const usersRelationsExtended = relations(users, ({ many }) => ({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Local authentication schemas
+export const localSignupSchema = createInsertSchema(users, {
+  email: z.string().email("Please enter a valid email address"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+}).pick({
+  email: true,
+  firstName: true,
+  lastName: true,
+  password: true,
+});
+
+export const localLoginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type LocalSignup = z.infer<typeof localSignupSchema>;
+export type LocalLogin = z.infer<typeof localLoginSchema>;
 export type InsertTutorSession = typeof tutorSessions.$inferInsert;
 export type TutorSession = typeof tutorSessions.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;

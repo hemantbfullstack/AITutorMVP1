@@ -52,9 +52,11 @@ const paperGenRateLimit = rateLimit({
 // Helper function to get user ID in both Replit and local environments
 function getUserId(req: any): string {
   const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
-  if (!isReplitEnvironment || req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '0.0.0.0') {
-    return "local-dev-user";
+  if (!isReplitEnvironment) {
+    // Local development - get user ID from session
+    return req.user?.id || "anonymous";
   }
+  // Replit environment - get user ID from Replit claims
   return req.user.claims.sub;
 }
 
@@ -72,25 +74,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
       const isLocalAccess = req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '0.0.0.0';
       
-      if (!isReplitEnvironment || isLocalAccess) {
-        // Local development - ensure user exists and return it
+      if (!isReplitEnvironment) {
+        // Local development - return the authenticated user from session
+        const user = req.user;
+        if (!user) {
+          return res.status(401).json({ message: "Not authenticated" });
+        }
+        
+        // Remove password from response
+        const { password, ...userWithoutPassword } = user;
+        return res.json(userWithoutPassword);
+      }
+
+      // Check if we have a mock Replit development user
+      if (req.user && req.user.claims && req.user.claims.sub === "replit-dev-user") {
+        // Mock user for development in Replit
         const mockUser = {
-          id: "local-dev-user",
-          email: "developer@localhost",
-          firstName: "Local",
+          id: "replit-dev-user",
+          email: "dev@replit.local",
+          firstName: "Replit",
           lastName: "Developer",
           profileImageUrl: null,
         };
         
         try {
-          // Try to get existing user
-          await storage.getUser(mockUser.id);
+          // Try to get existing user or create it
+          let user = await storage.getUser(mockUser.id);
+          if (!user) {
+            user = await storage.upsertUser(mockUser);
+          }
+          return res.json(user);
         } catch {
-          // User doesn't exist, create it
-          await storage.upsertUser(mockUser);
+          // If storage fails, just return the mock user
+          return res.json(mockUser);
         }
-        
-        return res.json(mockUser);
       }
 
       const userId = getUserId(req);
