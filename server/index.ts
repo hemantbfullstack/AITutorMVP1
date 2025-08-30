@@ -8,7 +8,7 @@ try {
 }
 
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes/routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();

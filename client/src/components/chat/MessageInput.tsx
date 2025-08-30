@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import { Crown, AlertCircle } from 'lucide-react';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
-  disabled: boolean;
-  sessionId: string | null;
+  disabled?: boolean;
+  sessionId?: string | null;
 }
 
 export default function MessageInput({ onSendMessage, disabled, sessionId }: MessageInputProps) {
@@ -68,6 +69,24 @@ export default function MessageInput({ onSendMessage, disabled, sessionId }: Mes
 
   return (
     <div className="bg-white border-t border-slate-200 px-6 py-4">
+      {disabled && (
+        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertCircle className="w-4 h-4" />
+            <span className="text-sm">
+              You've reached your usage limit. 
+              <button 
+                onClick={() => window.location.href = '/pricing'}
+                className="ml-1 underline hover:no-underline"
+              >
+                Upgrade your plan
+              </button> 
+              to continue chatting.
+            </span>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-end space-x-3">
         <div className="flex-1 relative">
           <Textarea

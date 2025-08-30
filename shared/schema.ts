@@ -35,7 +35,10 @@ export const users = pgTable("users", {
   password: varchar("password"), // For local development login
   isLocalUser: boolean("is_local_user").default(false), // Flag to identify local vs Replit users
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),   
+  planId: varchar("plan_id").default("free").notNull(),
+  usageCount: integer("usage_count").default(0).notNull(),
+  usageResetAt: timestamp("usage_reset_at"), 
 });
 
 // Tutor sessions

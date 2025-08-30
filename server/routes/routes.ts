@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import wolframRouter from "./wolfram";
+import { storage } from "../storage.js";
+import { setupAuth, isAuthenticated } from "../replitAuth.js";
+import wolframRouter from "../wolfram.js";
 import {
   tutorMessageSchema,
   calcSchema,
@@ -14,9 +14,10 @@ import {
 import OpenAI from "openai";
 import { evaluate } from "mathjs";
 import rateLimit from "express-rate-limit";
-import { paperGeneratorService } from "./paperGenerator";
-import fs from "fs";
-import path from "path";
+import { paperGeneratorService } from "../paperGenerator.js";
+import stripeRoutes from "../routes/stripe.js";
+
+
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "your-openai-key",
@@ -95,6 +96,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: "Replit",
           lastName: "Developer",
           profileImageUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          planId: "free",           // ← Added subscription field
+          usageCount: 3,            // ← Added usage tracking (3 out of 5 used)
+          usageResetAt: null 
         };
         
         try {
@@ -697,6 +703,9 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
       res.status(500).json({ error: "Failed to generate PDF" });
     }
   });
+
+  // Stripe routes
+  app.use('/api/stripe', stripeRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

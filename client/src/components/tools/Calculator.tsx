@@ -2,11 +2,14 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Trash2, Send, History, Calculator as CalculatorIcon } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Trash2, Send, History, Calculator as CalculatorIcon, Fuel } from "lucide-react";
 
 interface CalculatorProps {
   onSendToChat?: (expression: string, result: string) => void;
 }
+
+type CalculatorMode = "normal" | "scientific";
 
 export function Calculator({ onSendToChat }: CalculatorProps) {
   const [display, setDisplay] = useState("0");
@@ -15,6 +18,7 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
   const [waitingForNewValue, setWaitingForNewValue] = useState(false);
   const [history, setHistory] = useState<Array<{ expression: string; result: string }>>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [mode, setMode] = useState<CalculatorMode>("normal");
 
   const inputNumber = (num: string) => {
     if (waitingForNewValue) {
@@ -127,6 +131,40 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
       case "1/x":
         result = 1 / inputValue;
         break;
+      case "±":
+        result = -inputValue;
+        break;
+      case "%":
+        result = inputValue / 100;
+        break;
+      case "x³":
+        result = inputValue * inputValue * inputValue;
+        break;
+      case "xʸ":
+        // For now, just square it. In a real implementation, you'd need a second input
+        result = inputValue * inputValue;
+        break;
+      case "eˣ":
+        result = Math.exp(inputValue);
+        break;
+      case "10ˣ":
+        result = Math.pow(10, inputValue);
+        break;
+      case "|x|":
+        result = Math.abs(inputValue);
+        break;
+      case "n!":
+        result = factorial(inputValue);
+        break;
+      case "sinh":
+        result = Math.sinh(inputValue);
+        break;
+      case "cosh":
+        result = Math.cosh(inputValue);
+        break;
+      case "tanh":
+        result = Math.tanh(inputValue);
+        break;
       default:
         return;
     }
@@ -143,6 +181,16 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
     setWaitingForNewValue(true);
   };
 
+  const factorial = (n: number): number => {
+    if (n < 0 || n !== Math.floor(n)) return NaN;
+    if (n === 0 || n === 1) return 1;
+    let result = 1;
+    for (let i = 2; i <= n; i++) {
+      result *= i;
+    }
+    return result;
+  };
+
   const sendToChat = () => {
     if (history.length > 0) {
       const latest = history[0];
@@ -150,7 +198,35 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
     }
   };
 
-  const buttons = [
+  // Normal calculator buttons
+  const normalButtons = [
+    { label: "C", type: "clear", className: "calculator-button calculator-button-secondary" },
+    { label: "±", type: "function", className: "calculator-button calculator-button-secondary" },
+    { label: "%", type: "function", className: "calculator-button calculator-button-secondary" },
+    { label: "÷", type: "operation", className: "calculator-button calculator-button-primary" },
+    
+    { label: "7", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "8", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "9", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "×", type: "operation", className: "calculator-button calculator-button-primary" },
+    
+    { label: "4", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "5", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "6", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "-", type: "operation", className: "calculator-button calculator-button-primary" },
+    
+    { label: "1", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "2", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "3", type: "number", className: "calculator-button calculator-button-secondary" },
+    { label: "+", type: "operation", className: "calculator-button calculator-button-primary" },
+    
+    { label: "0", type: "number", className: "calculator-button calculator-button-secondary col-span-2" },
+    { label: ".", type: "decimal", className: "calculator-button calculator-button-secondary" },
+    { label: "=", type: "equals", className: "calculator-button calculator-button-primary" },
+  ];
+
+  // Scientific calculator buttons
+  const scientificButtons = [
     { label: "C", type: "clear", className: "calculator-button calculator-button-secondary" },
     { label: "±", type: "function", className: "calculator-button calculator-button-secondary" },
     { label: "%", type: "function", className: "calculator-button calculator-button-secondary" },
@@ -167,14 +243,26 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
     { label: "-", type: "operation", className: "calculator-button calculator-button-primary" },
     
     { label: "x²", type: "function", className: "calculator-button calculator-button-outline" },
-    { label: "1/x", type: "function", className: "calculator-button calculator-button-outline" },
-    { label: "π", type: "constant", className: "calculator-button calculator-button-outline" },
+    { label: "x³", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "xʸ", type: "function", className: "calculator-button calculator-button-outline" },
     { label: "+", type: "operation", className: "calculator-button calculator-button-primary" },
+    
+    { label: "sinh", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "cosh", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "tanh", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "=", type: "equals", className: "calculator-button calculator-button-primary row-span-2" },
+    
+    { label: "eˣ", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "10ˣ", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "|x|", type: "function", className: "calculator-button calculator-button-outline" },
+    
+    { label: "1/x", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "n!", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: "π", type: "constant", className: "calculator-button calculator-button-outline" },
     
     { label: "7", type: "number", className: "calculator-button calculator-button-secondary" },
     { label: "8", type: "number", className: "calculator-button calculator-button-secondary" },
     { label: "9", type: "number", className: "calculator-button calculator-button-secondary" },
-    { label: "=", type: "equals", className: "calculator-button calculator-button-primary row-span-2" },
     
     { label: "4", type: "number", className: "calculator-button calculator-button-secondary" },
     { label: "5", type: "number", className: "calculator-button calculator-button-secondary" },
@@ -187,6 +275,8 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
     { label: "0", type: "number", className: "calculator-button calculator-button-secondary col-span-2" },
     { label: ".", type: "decimal", className: "calculator-button calculator-button-secondary" },
   ];
+
+  const buttons = mode === "normal" ? normalButtons : scientificButtons;
 
   const handleButtonClick = (button: typeof buttons[0]) => {
     switch (button.type) {
@@ -246,12 +336,26 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
         </div>
       </div>
 
+      {/* Calculator Mode Toggle */}
+      <div className="flex items-center justify-center">
+        <ToggleGroup type="single" value={mode} onValueChange={(value) => value && setMode(value as CalculatorMode)}>
+          <ToggleGroupItem value="normal" className="px-4 py-2">
+            <CalculatorIcon className="w-4 h-4 mr-2" />
+            Normal
+          </ToggleGroupItem>
+          <ToggleGroupItem value="scientific" className="px-4 py-2">
+            <Fuel className="w-4 h-4 mr-2" />
+            Scientific
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
       <Card className="p-4">
         <div className="calculator-display text-right text-2xl font-mono mb-4" data-testid="calculator-display">
           {display}
         </div>
 
-        <div className="grid grid-cols-4 gap-2 text-sm">
+        <div className={`grid gap-2 text-sm ${mode === "normal" ? "grid-cols-4" : "grid-cols-4"}`}>
           {buttons.map((button, index) => (
             <Button
               key={index}

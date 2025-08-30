@@ -7,11 +7,13 @@ import MathToolsSidebar from "@/components/tools/MathToolsSidebar";
 import Navbar from "@/components/ui/navbar";
 import { UIAction } from "@/lib/intentDetector";
 import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Tutor() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [showMobileTools, setShowMobileTools] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [visualState, setVisualState] = useState<{
     highlightTriangleType?: TriangleType;
     customVertices?: [number, number][];
@@ -54,6 +56,13 @@ export default function Tutor() {
     }
   };
 
+  const toggleSidebar = () => {
+    setSidebarExpanded(!sidebarExpanded);
+  };
+
+  const sidebarWidth = sidebarExpanded ? "w-96" : "w-20";
+  const mainContentMargin = sidebarExpanded ? "lg:mr-96" : "lg:mr-20";
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -72,7 +81,7 @@ export default function Tutor() {
       
       <div className="pt-16 min-h-screen flex">
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col lg:mr-80">
+        <div className={`flex-1 flex flex-col ${mainContentMargin}`}>
           <ChatArea 
             onToggleMobileTools={() => setShowMobileTools(!showMobileTools)}
             onTriggerVisual={handleVisualTrigger}
@@ -80,13 +89,27 @@ export default function Tutor() {
         </div>
 
         {/* Math Tools Sidebar - Desktop */}
-        <div className="hidden lg:block w-80 bg-white border-l border-slate-200 fixed right-0 top-16 bottom-0 overflow-hidden">
+        <div className={`hidden lg:block ${sidebarWidth} bg-white border-l border-slate-200 fixed right-0 top-16 bottom-0 overflow-hidden transition-all duration-300 ease-in-out`}>
+          {/* Sidebar Toggle Button */}
+          <button
+            onClick={toggleSidebar}
+            className="absolute -left-3 top-4 bg-white border border-slate-200 rounded-full p-1 shadow-md hover:shadow-lg transition-shadow z-10"
+            title={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {sidebarExpanded ? (
+              <ChevronRight className="w-4 h-4 text-slate-600" />
+            ) : (
+              <ChevronLeft className="w-4 h-4 text-slate-600" />
+            )}
+          </button>
+
           <MathToolsSidebar 
             highlightTriangleType={visualState.highlightTriangleType}
             customVertices={visualState.customVertices}
             openShapesTab={visualState.openShapesTab}
             graphFunctions={visualState.graphFunctions}
             graphRange={visualState.graphRange}
+            isExpanded={sidebarExpanded}
           />
         </div>
 
@@ -97,7 +120,7 @@ export default function Tutor() {
             onClick={() => setShowMobileTools(false)}
           >
             <div 
-              className="absolute right-0 top-0 bottom-0 w-80 max-w-full bg-white"
+              className="absolute right-0 top-0 bottom-0 w-96 max-w-full bg-white"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="h-full flex flex-col">
@@ -122,6 +145,7 @@ export default function Tutor() {
                     openShapesTab={visualState.openShapesTab}
                     graphFunctions={visualState.graphFunctions}
                     graphRange={visualState.graphRange}
+                    isExpanded={true}
                   />
                 </div>
               </div>

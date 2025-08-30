@@ -13,7 +13,9 @@ import { emitGraphRender } from "@/lib/graphBus";
 import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { fetchWolframImage, parsePlotQuery } from "@/utils/wolframClient";
 import TutorSelector from './TutorSelector';
-import { Play, Pause, Volume2, CheckCircle, GraduationCap, User, Copy, Settings } from 'lucide-react';
+import { Play, Pause, Volume2, CheckCircle, GraduationCap, User, Copy, Settings, Crown, AlertCircle } from 'lucide-react';
+import { useUserStore } from '@/store/userStore';
+import UsageIndicator from './UsageIndicator';
 
 interface Message {
   id: string;
@@ -41,6 +43,10 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isUsageLimitReached, user: storeUser } = useUserStore();
+  
+  console.log('ChatArea: user from store:', storeUser); // Debug log
+  console.log('ChatArea: isUsageLimitReached:', isUsageLimitReached()); // Debug log
 
   // Load voice preference from localStorage
   useEffect(() => {
@@ -351,6 +357,16 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   };
 
   const handleSendMessage = async (message: string) => {
+    // Check if usage limit is reached
+    if (isUsageLimitReached()) {
+      toast({
+        title: "Usage Limit Reached",
+        description: "You've reached your question limit. Please upgrade your plan to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!message.trim()) return;
 
     // Check for plot commands and render inline image
@@ -457,7 +473,10 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* Usage Indicator */}
+      <UsageIndicator />
+
       {/* Chat Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -612,7 +631,7 @@ What would you like to work on today?`}
 
           handleSendMessage(trimmed);
         }}
-        disabled={sendMessage.isPending || isStreaming}
+        disabled={sendMessage.isPending || isStreaming || isUsageLimitReached()}
         sessionId={currentSessionId}
       />
     </div>

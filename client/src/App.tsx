@@ -10,6 +10,10 @@ import Signup from "@/pages/signup";
 import Tutor from "@/pages/tutor";
 import Papers from "@/pages/papers";
 import NotFound from "@/pages/not-found";
+import PricingPage from '@/components/pricing/PricingPage';
+import SuccessPage from '@/pages/success';
+import CancelPage from '@/pages/cancel';
+import PlanSync from '@/components/admin/PlanSync';
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -27,12 +31,19 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route path="/login" component={Login} />
           <Route path="/signup" component={Signup} />
+          <Route path="/pricing" component={PricingPage} />
+          <Route path="/success" component={SuccessPage} />
+          <Route path="/cancel" component={CancelPage} />
         </>
       ) : (
         <>
           <Route path="/" component={Tutor} />
           <Route path="/tutor" component={Tutor} />
           <Route path="/papers" component={Papers} />
+          <Route path="/pricing" component={PricingPage} />
+          <Route path="/success" component={SuccessPage} />
+          <Route path="/cancel" component={CancelPage} />
+          <Route path="/admin/sync" component={PlanSync} />
         </>
       )}
       <Route component={NotFound} />
