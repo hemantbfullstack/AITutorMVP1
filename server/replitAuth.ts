@@ -146,10 +146,17 @@ export async function setupAuth(app: Express) {
     } else {
       // For local users, deserialize by fetching from database
       try {
+        if (!data) {
+          return cb(null, false);
+        }
         const user = await storage.getUser(data);
+        if (!user) {
+          return cb(null, false);
+        }
         cb(null, user);
       } catch (error) {
-        cb(error);
+        console.error("User deserialization error:", error);
+        cb(null, false); // Don't fail completely, just mark as unauthenticated
       }
     }
   });
