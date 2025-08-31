@@ -11,7 +11,8 @@ import { storage } from "./storage";
 import { localSignupSchema, localLoginSchema } from "@shared/schema";
 
 // Check if we're running in Replit environment
-const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
+// Force local authentication when NODE_ENV is development to enable password-based auth
+const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID) && process.env.NODE_ENV !== 'development';
 
 
 

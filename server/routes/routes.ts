@@ -122,6 +122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Remove test endpoint - authentication is working correctly
+
   // Tutor self-test endpoint
   app.post('/api/tutor/selftest', isAuthenticated, async (req: any, res) => {
     try {
