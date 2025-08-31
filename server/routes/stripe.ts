@@ -1,10 +1,18 @@
 import { plans } from "@shared/constants";
 import express, { Request, Response } from "express";
-import Stripe from "stripe";
 
 const router = express.Router();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {});
+// Only initialize Stripe if API key is provided
+let stripe: any = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  try {
+    const Stripe = (await import("stripe")).default;
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {});
+  } catch (error) {
+    console.warn("Stripe not available:", error);
+  }
+}
 
 // Helper function to convert our interval to Stripe's supported intervals
 const convertIntervalToStripe = (interval: string): "day" | "week" | "month" | "year" => {
@@ -24,6 +32,13 @@ const convertIntervalToStripe = (interval: string): "day" | "week" | "month" | "
 
 // Sync plans to Stripe
 router.post("/sync-plans", async (req: Request, res: Response) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "Stripe not configured. Please add STRIPE_SECRET_KEY to secrets." 
+    });
+  }
+  
   try {
     const updatedPlans: typeof plans = [];
 
@@ -69,6 +84,13 @@ router.post("/sync-plans", async (req: Request, res: Response) => {
 
 // 📋 List synced plans (for React frontend) - This should return plans with stripePriceId
 router.get("/plans", async (req: Request, res: Response) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "Stripe not configured. Please add STRIPE_SECRET_KEY to secrets." 
+    });
+  }
+  
   try {
     // First, let's check if we need to sync plans
     const needsSync = plans.some(plan => 
@@ -126,6 +148,13 @@ router.get("/plans", async (req: Request, res: Response) => {
 
 // 📋 List products/prices directly from Stripe
 router.get("/stripe/products", async (req: Request, res: Response) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "Stripe not configured. Please add STRIPE_SECRET_KEY to secrets." 
+    });
+  }
+  
   try {
     const products = await stripe.products.list({ limit: 50 });
     const prices = await stripe.prices.list({ limit: 50 });
@@ -138,6 +167,13 @@ router.get("/stripe/products", async (req: Request, res: Response) => {
 
 // 💳 Create Checkout Session
 router.post("/create-checkout-session", async (req: Request, res: Response) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "Stripe not configured. Please add STRIPE_SECRET_KEY to secrets." 
+    });
+  }
+  
   try {
     const { priceId, successUrl, cancelUrl } = req.body;
 
@@ -162,8 +198,15 @@ router.post("/create-checkout-session", async (req: Request, res: Response) => {
 
 // ⚡ Stripe Webhook (handle success/fail)
 router.post("/webhook", express.raw({ type: "application/json" }), (req: any, res: any) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "Stripe not configured. Please add STRIPE_SECRET_KEY to secrets." 
+    });
+  }
+  
   const sig = req.headers["stripe-signature"];
-  let event: Stripe.Event;
+  let event: any;
 
   try {
     event = stripe.webhooks.constructEvent(

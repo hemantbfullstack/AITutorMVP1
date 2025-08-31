@@ -8,7 +8,7 @@ import Navbar from "@/components/ui/navbar";
 import { UIAction } from "@/lib/intentDetector";
 import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import MainLayout from "@/components/layout/MainLayout";
+import MainLayout from "@/components/layout/mainLayout";
 
 export default function Tutor() {
   const { isAuthenticated, isLoading, logout } = useAuth();

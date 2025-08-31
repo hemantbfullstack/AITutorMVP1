@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
-import MainLayout from "@/components/layout/MainLayout";
+import MainLayout from "@/components/layout/mainLayout";
 
 export default function Landing() {
   const { isLoading } = useAuth();
