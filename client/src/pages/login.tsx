@@ -25,10 +25,24 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LocalLogin) => {
-      const response = await apiRequest("POST", "/api/auth/login", data);
-      return response.json();
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || "Login failed");
+      }
+
+      const result = await response.json();
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Success",
