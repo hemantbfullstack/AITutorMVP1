@@ -34,12 +34,17 @@ export const users = pgTable("users", {
   // Local development authentication fields
   password: varchar("password"), // For local development login
   isLocalUser: boolean("is_local_user").default(false), // Flag to identify local vs Replit users
+  role: varchar("role").default("student").notNull(), // Add this line
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),   
   planId: varchar("plan_id").default("free").notNull(),
   usageCount: integer("usage_count").default(0).notNull(),
   usageResetAt: timestamp("usage_reset_at"), 
 });
+
+// Add role enum type
+export const userRoleEnum = z.enum(["admin", "teacher", "student"]);
+export type UserRole = z.infer<typeof userRoleEnum>;
 
 // Tutor sessions
 export const tutorSessions = pgTable("tutor_sessions", {

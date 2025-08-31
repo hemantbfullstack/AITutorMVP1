@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function Landing() {
   const { isLoading } = useAuth();
@@ -15,6 +16,7 @@ export default function Landing() {
   }
 
   return (
+    <MainLayout showNavbar={false} showFooter={false}>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
@@ -156,5 +158,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </MainLayout>
   );
 }

@@ -1,0 +1,6 @@
+{
+  "watch": ["server", "client/src"],
+  "ext": "ts,tsx,js,jsx,json",
+  "ignore": ["node_modules"],
+  "exec": "tsx -r dotenv/config server/index.ts"
+}

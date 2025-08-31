@@ -8,9 +8,10 @@ import Navbar from "@/components/ui/navbar";
 import { UIAction } from "@/lib/intentDetector";
 import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import MainLayout from "@/components/layout/MainLayout";
 
 export default function Tutor() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const { toast } = useToast();
   const [showMobileTools, setShowMobileTools] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -75,8 +76,14 @@ export default function Tutor() {
     return null; // Will redirect via useEffect
   }
 
+  const handleLogout = () => {
+    logout();
+    // The useAuth hook will clear localStorage and redirect
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <MainLayout>
+      <div className="min-h-screen bg-slate-50">
       <Navbar />
       
       <div className="pt-16 min-h-screen flex">
@@ -154,5 +161,8 @@ export default function Tutor() {
         )}
       </div>
     </div>
+    
+    </MainLayout>
+    
   );
 }

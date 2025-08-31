@@ -13,6 +13,7 @@ import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
 import Navbar from "@/components/ui/navbar";
 import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GeneratedPaper {
   id: string;

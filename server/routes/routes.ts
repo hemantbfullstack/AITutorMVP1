@@ -16,6 +16,7 @@ import { evaluate } from "mathjs";
 import rateLimit from "express-rate-limit";
 import { paperGeneratorService } from "../paperGenerator.js";
 import stripeRoutes from "../routes/stripe.js";
+import adminRoutes from "../routes/admin.js";
 
 
 
@@ -82,9 +83,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({ message: "Not authenticated" });
         }
         
-        // Remove password from response
+        // Remove password from response and add role if missing
         const { password, ...userWithoutPassword } = user;
-        return res.json(userWithoutPassword);
+        const userWithRole = {
+          ...userWithoutPassword,
+          role: user.role || 'student' // Ensure role is always present
+        };
+        
+        return res.json(userWithRole);
       }
 
       // Check if we have a mock Replit development user
@@ -96,24 +102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: "Replit",
           lastName: "Developer",
           profileImageUrl: null,
+          role: "admin", // Add role
           createdAt: new Date(),
           updatedAt: new Date(),
-          planId: "free",           // ← Added subscription field
-          usageCount: 3,            // ← Added usage tracking (3 out of 5 used)
-          usageResetAt: null 
+          planId: "free",
+          usageCount: 0,
+          usageResetAt: null,
+          isLocalUser: false
         };
-        
-        try {
-          // Try to get existing user or create it
-          let user = await storage.getUser(mockUser.id);
-          if (!user) {
-            user = await storage.upsertUser(mockUser);
-          }
-          return res.json(user);
-        } catch {
-          // If storage fails, just return the mock user
-          return res.json(mockUser);
-        }
+        return res.json(mockUser);
       }
 
       const userId = getUserId(req);
@@ -706,6 +703,7 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
 
   // Stripe routes
   app.use('/api/stripe', stripeRoutes);
+  app.use('/api/admin', adminRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

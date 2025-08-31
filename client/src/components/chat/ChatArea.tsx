@@ -14,8 +14,9 @@ import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { fetchWolframImage, parsePlotQuery } from "@/utils/wolframClient";
 import TutorSelector from './TutorSelector';
 import { Play, Pause, Volume2, CheckCircle, GraduationCap, User, Copy, Settings, Crown, AlertCircle } from 'lucide-react';
-import { useUserStore } from '@/store/userStore';
-import UsageIndicator from './UsageIndicator';
+import { useAuth } from '@/hooks/useAuth';
+import { UsageIndicator } from "./UsageIndicator";
+
 
 interface Message {
   id: string;
@@ -43,8 +44,25 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { isUsageLimitReached, user: storeUser } = useUserStore();
+  const { user: storeUser } = useAuth();
   
+  // Add usage limit check function locally
+  const isUsageLimitReached = () => {
+    if (!storeUser || !storeUser.planId) return false;
+    
+    const plans = [
+      { id: "free", limit: 5 },
+      { id: "hourly", limit: 100 },
+      { id: "monthly", limit: 200 },
+      { id: "annual", limit: 2500 }
+    ];
+    
+    const plan = plans.find(p => p.id === storeUser.planId);
+    if (!plan || !plan.limit) return false;
+    
+    return storeUser.usageCount >= plan.limit;
+  };
+
   console.log('ChatArea: user from store:', storeUser); // Debug log
   console.log('ChatArea: isUsageLimitReached:', isUsageLimitReached()); // Debug log
 
