@@ -43,7 +43,9 @@ export default function Login() {
       return result;
     },
     onSuccess: (data) => {
+      // Invalidate and refetch user data to update authentication state
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Success",
         description: "Logged in successfully!",

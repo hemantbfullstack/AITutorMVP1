@@ -53,13 +53,13 @@ const paperGenRateLimit = rateLimit({
 
 // Helper function to get user ID in both Replit and local environments
 function getUserId(req: any): string {
-  const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
+  const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID) && process.env.NODE_ENV !== 'development';
   if (!isReplitEnvironment) {
     // Local development - get user ID from session
     return req.user?.id || "anonymous";
   }
   // Replit environment - get user ID from Replit claims
-  return req.user.claims.sub;
+  return req.user?.claims?.sub || "anonymous";
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -72,9 +72,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      // Check if we're running in local development or accessing via localhost
-      const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID);
-      const isLocalAccess = req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '0.0.0.0';
+      // Check if we're running in local development mode (forced by NODE_ENV=development)
+      const isReplitEnvironment = !!(process.env.REPLIT_DOMAINS && process.env.REPL_ID) && process.env.NODE_ENV !== 'development';
       
       if (!isReplitEnvironment) {
         // Local development - return the authenticated user from session
