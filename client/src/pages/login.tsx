@@ -42,15 +42,20 @@ export default function Login() {
       const result = await response.json();
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       // Invalidate and refetch user data to update authentication state
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
         title: "Success",
         description: "Logged in successfully!",
       });
-      setLocation("/");
+      
+      // Small delay to ensure state is updated before navigation
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     },
     onError: (error: Error) => {
       toast({

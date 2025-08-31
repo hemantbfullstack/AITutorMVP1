@@ -34,13 +34,13 @@ const ProtectedRoute = ({ component: Component, requiredRole }: {
   component: React.ComponentType<any>, 
   requiredRole?: string 
 }) => {
-  const { user, isLoggedIn, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  if (!isLoggedIn) {
+  if (!isAuthenticated) {
     window.location.href = '/login';
     return <div>Redirecting to login...</div>;
   }
@@ -54,7 +54,7 @@ const ProtectedRoute = ({ component: Component, requiredRole }: {
 };
 
 function Router() {
-  const { isLoggedIn, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -63,7 +63,7 @@ function Router() {
   return (
     <Switch>
       {/* Public routes - always accessible */}
-      <Route path="/" component={isLoggedIn ? Tutor : Landing} />
+      <Route path="/" component={isAuthenticated ? Tutor : Landing} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/pricing" component={PricingPage} />
