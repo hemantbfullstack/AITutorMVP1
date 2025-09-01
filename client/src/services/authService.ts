@@ -24,28 +24,28 @@ export interface User {
 
 export const authService = {
   async login(data: LoginData): Promise<User> {
-    const res = await apiClient.post("/auth/login", data);    
-    const { user, token } = res.data;    
+    const res = await apiClient.post("/auth/login", data);
+    const { user, token } = res.data;
     // Store JWT token
     if (token) {
       TokenManager.setToken(token);
-      console.log('Token stored:', token);
+      console.log("Token stored:", token);
     } else {
-      console.error('No token received from server');
+      console.error("No token received from server");
     }
-    
+
     return user;
   },
 
   async signup(data: SignupData): Promise<User> {
     const res = await apiClient.post("/auth/register", data);
     const { user, token } = res.data;
-    
+
     // Store JWT token
     if (token) {
       TokenManager.setToken(token);
     }
-    
+
     return user;
   },
 
@@ -57,25 +57,25 @@ export const authService = {
   async getCurrentUser(): Promise<User> {
     // With JWT, we can decode the token to get user info
     const token = TokenManager.getToken();
-    console.log('Getting current user, token:', token ? 'exists' : 'missing');
-    
+    console.log("Getting current user, token:", token ? "exists" : "missing");
+
     if (!token) {
-      throw new Error('No token found');
+      throw new Error("No token found");
     }
-    
+
     if (TokenManager.isTokenExpired(token)) {
       // Remove expired token
       TokenManager.removeToken();
-      throw new Error('Token expired');
+      throw new Error("Token expired");
     }
-    
+
     const payload = TokenManager.getTokenPayload(token);
-    console.log('Token payload:', payload);
-    
+    console.log("Token payload:", payload);
+
     if (!payload) {
-      throw new Error('Invalid token');
+      throw new Error("Invalid token");
     }
-    
+
     return {
       id: payload.userId,
       email: payload.email,

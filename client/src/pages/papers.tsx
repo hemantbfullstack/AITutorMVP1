@@ -25,7 +25,7 @@ import {
 import "katex/dist/katex.min.css";
 import { InlineMath, BlockMath } from "react-katex";
 import { useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GeneratedPaper {
   id: string;
