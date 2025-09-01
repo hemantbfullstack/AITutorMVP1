@@ -63,10 +63,13 @@ export default function ChatArea({
   const [ibLevel, setIbLevel] = useState<"HL" | "SL">("HL");
   const [selfTestResult, setSelfTestResult] = useState<string | null>(null);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>(
-    "21m00Tcm4TlvDq8ikWAM"
-  ); // Default to Rachel
+    "alloy" // OpenAI voice name, not ElevenLabs ID
+  );
 
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user: storeUser } = useAuth();
@@ -95,7 +98,15 @@ export default function ChatArea({
   useEffect(() => {
     const savedVoiceId = localStorage.getItem("selectedVoiceId");
     if (savedVoiceId) {
-      setSelectedVoiceId(savedVoiceId);
+      // Check if the saved voice is still valid (in case user had old ElevenLabs IDs)
+      const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+      if (validVoices.includes(savedVoiceId)) {
+        setSelectedVoiceId(savedVoiceId);
+      } else {
+        // Reset to default if old voice ID found
+        setSelectedVoiceId("alloy");
+        localStorage.setItem("selectedVoiceId", "alloy");
+      }
     }
   }, []);
 
@@ -149,10 +160,39 @@ export default function ChatArea({
     }
   };
 
-  // Auto-scroll to bottom
+  // Check if user has scrolled up manually
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // 10px threshold
+      setShouldAutoScroll(isAtBottom);
+    }
+  };
+
+  // Auto-scroll to bottom - but only when appropriate
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingMessage]);
+    // Only auto-scroll if:
+    // 1. User hasn't manually scrolled up
+    // 2. There are actual messages (not just initial load)
+    // 3. Streaming is active
+    if (shouldAutoScroll && (messages.length > 0 || isStreaming)) {
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ 
+          behavior: "smooth",
+          block: "end"
+        });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length, isStreaming, shouldAutoScroll]);
+
+  // Reset auto-scroll when new messages come in
+  useEffect(() => {
+    if (messages.length > 0) {
+      setShouldAutoScroll(true);
+    }
+  }, [messages.length]);
 
   // Debug logging for message changes
   useEffect(() => {
@@ -665,7 +705,11 @@ export default function ChatArea({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+        onScroll={handleScroll}
+      >
         {/* Welcome Message */}
         {messages.length === 0 && !isStreaming && (
           <MessageBubble

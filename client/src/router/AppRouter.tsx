@@ -132,19 +132,26 @@ const PublicNotFound = React.memo(() => (
 export default function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Memoize the root route component to prevent unnecessary re-renders
-  const RootComponent = useMemo(() => {
-    return isAuthenticated ? AuthenticatedTutor : PublicLanding;
-  }, [isAuthenticated]);
-
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
   return (
     <Switch>
+      {/* Root route - redirect authenticated users to tutor, show landing to guests */}
+      <Route path="/">
+        {isAuthenticated ? (
+          <Suspense fallback={<LoadingSpinner />}>
+            <Tutor />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<LoadingSpinner />}>
+            <Landing />
+          </Suspense>
+        )}
+      </Route>
+
       {/* Public routes - always accessible */}
-      <Route path="/" component={RootComponent} />
       <Route path="/login" component={PublicLogin} />
       <Route path="/signup" component={PublicSignup} />
       <Route path="/pricing" component={PublicPricing} />

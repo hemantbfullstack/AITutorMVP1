@@ -122,7 +122,9 @@ export default function MessageBubble({
         credentials: "include",
         body: JSON.stringify({ 
           text: content,
-          voiceId: selectedVoiceId
+          voice: selectedVoiceId, // This should now be "alloy", "echo", etc.
+          model: "tts-1", // OpenAI TTS model
+          format: "mp3" // Output format
         }),
       });
 

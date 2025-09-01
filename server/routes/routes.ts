@@ -552,49 +552,57 @@ Mathematical notation: Use proper LaTeX formatting for all expressions.`;
     ttsRateLimit,
     async (req, res) => {
       try {
-        const { text, voiceId, model, format } = ttsSchema.parse(req.body);
+        const { text, voice, model, format } = ttsSchema.parse(req.body);
 
-        const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
-        if (!elevenLabsApiKey) {
+        const openaiApiKey = process.env.OPENAI_API_KEY;
+        if (!openaiApiKey) {
           return res.status(501).json({ error: "TTS not configured" });
         }
 
-        // Use the provided voiceId or fall back to default
-        const selectedVoiceId =
-          voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
-        const defaultModel =
-          process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
+        // Use the provided voice or fall back to default
+        const selectedVoice = voice || "alloy";
+        const defaultModel = model || "tts-1";
+        const outputFormat = format || "mp3";
+
+        // Map format to OpenAI's supported format
+        const openaiFormat = outputFormat === "wav" ? "wav" : "mp3";
+
+        console.log("TTS Request:", { text: text.substring(0, 100) + "...", voice: selectedVoice, model: defaultModel });
 
         const response = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`,
+          "https://api.openai.com/v1/audio/speech",
           {
             method: "POST",
             headers: {
-              Accept: "audio/mpeg",
+              "Authorization": `Bearer ${openaiApiKey}`,
               "Content-Type": "application/json",
-              "xi-api-key": elevenLabsApiKey,
             },
             body: JSON.stringify({
-              text,
-              model_id: model || defaultModel,
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.5,
-              },
-              // Add optimization flags
-              output_format: "mp3_44100_128", // Optimized format
-              latency_optimization_level: 3, // Maximum latency optimization
+              model: defaultModel,
+              input: text,
+              voice: selectedVoice,
+              response_format: openaiFormat,
+              speed: 1.0, // Default speed, can be made configurable
             }),
           }
         );
 
         if (!response.ok) {
-          throw new Error(`ElevenLabs API error: ${response.status}`);
+          const errorData = await response.json().catch(() => ({}));
+          console.error("OpenAI TTS API error:", response.status, errorData);
+          throw new Error(`OpenAI TTS API error: ${response.status}`);
         }
 
-        // Stream the response directly for better performance
-        res.setHeader("Content-Type", "audio/mpeg");
-        response.body.pipe(res);
+        // Get the audio data as an ArrayBuffer
+        const audioBuffer = await response.arrayBuffer();
+        
+        // Set the correct content type header
+        res.setHeader("Content-Type", `audio/${openaiFormat}`);
+        res.setHeader("Content-Length", audioBuffer.byteLength);
+        
+        // Send the audio data
+        res.send(Buffer.from(audioBuffer));
+        
       } catch (error) {
         console.error("TTS error:", error);
         res.status(500).json({ error: "TTS temporarily unavailable" });

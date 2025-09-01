@@ -13,7 +13,7 @@ import {
 import VoicePreview from './VoicePreview';
 
 interface TutorVoice {
-  voice_id: string;
+  voice: string; // OpenAI voice name
   name: string;
   labels: {
     accent: string;
@@ -27,51 +27,75 @@ interface TutorVoice {
 
 const tutorVoices: TutorVoice[] = [
   {
-    "voice_id": "21m00Tcm4TlvDq8ikWAM",
-    "name": "Rachel",
+    "voice": "alloy",
+    "name": "Alloy",
     "labels": {
       "accent": "american",
-      "descriptive": "casual",
-      "age": "young",
-      "gender": "female",
+      "descriptive": "versatile",
+      "age": "adult",
+      "gender": "neutral",
       "language": "en",
-      "use_case": "conversational"
+      "use_case": "general"
     },
   },
   {
-    "voice_id": "2EiwWnXFnvU5JabPnv8n",
-    "name": "Clyde",
+    "voice": "echo",
+    "name": "Echo",
     "labels": {
       "accent": "american",
-      "descriptive": "intense",
-      "age": "middle_aged",
+      "descriptive": "warm",
+      "age": "adult",
       "gender": "male",
       "language": "en",
-      "use_case": "characters_animation"
+      "use_case": "conversational"
     }
   },
   {
-    "voice_id": "CwhRBWXzGAHq8TQ4Fs17",
-    "name": "Roger",
+    "voice": "fable",
+    "name": "Fable",
+    "labels": {
+      "accent": "british",
+      "descriptive": "narrator",
+      "age": "adult",
+      "gender": "male",
+      "language": "en",
+      "use_case": "storytelling"
+    },
+  },
+  {
+    "voice": "onyx",
+    "name": "Onyx",
     "labels": {
       "accent": "american",
-      "descriptive": "classy",
-      "age": "middle_aged",
+      "descriptive": "deep",
+      "age": "adult",
       "gender": "male",
+      "language": "en",
+      "use_case": "professional"
+    },
+  },
+  {
+    "voice": "nova",
+    "name": "Nova",
+    "labels": {
+      "accent": "american",
+      "descriptive": "bright",
+      "age": "young",
+      "gender": "female",
       "language": "en",
       "use_case": "conversational"
     },
   },
   {
-    "voice_id": "EXAVITQu4vr4xnSDxMaL",
-    "name": "Sarah",
+    "voice": "shimmer",
+    "name": "Shimmer",
     "labels": {
       "accent": "american",
-      "descriptive": "professional",
+      "descriptive": "gentle",
       "age": "young",
       "gender": "female",
       "language": "en",
-      "use_case": "entertainment_tv"
+      "use_case": "soft"
     },
   }
 ];
@@ -112,12 +136,15 @@ export default function TutorSelector({ selectedVoiceId, onVoiceChange, classNam
       } else {
         return '👩‍🏫';
       }
-    } else {
+    } else if (gender === 'male') {
       if (age === 'young') {
         return '👨‍🎓';
       } else {
         return '👨‍🏫';
       }
+    } else {
+      // For neutral voices like "alloy"
+      return '🤖';
     }
   };
 
@@ -139,20 +166,11 @@ export default function TutorSelector({ selectedVoiceId, onVoiceChange, classNam
   };
 
   const getTutorDescription = (tutor: TutorVoice) => {
-    const { descriptive, age, accent } = tutor.labels;
-    
-    const descriptions: Record<string, string> = {
-      'casual': 'Friendly and approachable',
-      'intense': 'Energetic and passionate',
-      'classy': 'Sophisticated and refined',
-      'professional': 'Clear and authoritative'
-    };
-    
-    const description = descriptions[descriptive] || 'Professional';
-    return `${description} ${age.replace('_', ' ')} ${accent} tutor`;
+    const { accent, descriptive, age, use_case } = tutor.labels;
+    return `${descriptive} ${age} ${accent} voice, perfect for ${use_case}`;
   };
 
-  const selectedTutor = tutorVoices.find(t => t.voice_id === selectedVoiceId) || tutorVoices[0];
+  const selectedTutor = tutorVoices.find(t => t.voice === selectedVoiceId) || tutorVoices[0];
 
   return (
     <div className={`relative ${className}`}>
@@ -207,19 +225,19 @@ export default function TutorSelector({ selectedVoiceId, onVoiceChange, classNam
             <div className="p-6 space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
               {tutorVoices.map((tutor) => (
                 <div
-                  key={tutor.voice_id}
+                  key={tutor.voice}
                   className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:scale-[1.02] hover:-translate-y-1 ${
-                    selectedVoiceId === tutor.voice_id 
+                    selectedVoiceId === tutor.voice 
                       ? 'border-blue-500 bg-blue-50 shadow-md' 
                       : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
                   onClick={() => {
-                    onVoiceChange(tutor.voice_id);
+                    onVoiceChange(tutor.voice);
                     setIsOpen(false);
                   }}
                 >
                   {/* Selection indicator */}
-                  {selectedVoiceId === tutor.voice_id && (
+                  {selectedVoiceId === tutor.voice && (
                     <div className="absolute top-3 right-3 animate-bounce">
                       <CheckCircle className="w-6 h-6 text-blue-500" />
                     </div>
@@ -235,7 +253,7 @@ export default function TutorSelector({ selectedVoiceId, onVoiceChange, classNam
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="font-bold text-lg text-gray-900 transition-all duration-200 hover:text-blue-600">{tutor.name}</h4>
-                        {selectedVoiceId === tutor.voice_id && (
+                        {selectedVoiceId === tutor.voice && (
                           <Badge variant="default" className="bg-blue-500 text-white animate-pulse">
                             Current
                           </Badge>
@@ -262,7 +280,7 @@ export default function TutorSelector({ selectedVoiceId, onVoiceChange, classNam
                       {/* Voice Preview */}
                       <div className="mt-2">
                         <VoicePreview 
-                          voiceId={tutor.voice_id} 
+                          voiceId={tutor.voice} 
                           tutorName={tutor.name}
                         />
                       </div>

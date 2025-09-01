@@ -219,8 +219,8 @@ export const wolframSchema = z.object({
 
 export const ttsSchema = z.object({
   text: z.string().min(1).max(5000),
-  voiceId: z.string().optional(),
-  model: z.string().optional(),
+  voice: z.string().optional(), // OpenAI voice name
+  model: z.string().optional(), // OpenAI TTS model
   format: z.enum(["mp3", "wav", "ogg"]).optional(),
 });
 

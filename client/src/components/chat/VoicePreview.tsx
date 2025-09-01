@@ -34,7 +34,9 @@ export default function VoicePreview({ voiceId, tutorName, className }: VoicePre
           credentials: "include",
           body: JSON.stringify({ 
             text: previewText,
-            voiceId: voiceId
+            voice: voiceId, // This should now be "alloy", "echo", etc.
+            model: "tts-1", // OpenAI TTS model
+            format: "mp3" // Output format
           }),
         });
 
