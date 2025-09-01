@@ -1,6 +1,12 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import MainLayout from "@/components/layout/mainLayout";
 import { Link } from "wouter";
 
@@ -27,9 +33,11 @@ export default function Landing() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <i className="fas fa-graduation-cap text-white text-sm"></i>
               </div>
-              <span className="text-xl font-semibold text-slate-900">AI Tutor</span>
+              <span className="text-xl font-semibold text-slate-900">
+                AI Tutor
+              </span>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Button variant="outline" asChild>
                 <Link href="/login">Sign In</Link>
@@ -49,14 +57,24 @@ export default function Landing() {
               <span className="text-primary block">AI-Powered Tutoring</span>
             </h1>
             <p className="text-xl text-slate-600 mb-8 max-w-3xl mx-auto">
-              Get personalized, step-by-step help for IB Math AA and AI with our advanced AI tutor. 
-              Complete with interactive tools, voice assistance, and comprehensive practice materials.
+              Get personalized, step-by-step help for IB Math AA and AI with our
+              advanced AI tutor. Complete with interactive tools, voice
+              assistance, and comprehensive practice materials.
             </p>
             <div className="flex items-center justify-center space-x-4">
-              <Button size="lg" asChild className="bg-primary hover:bg-blue-700 text-lg px-8 py-4">
+              <Button
+                size="lg"
+                asChild
+                className="bg-primary hover:bg-blue-700 text-lg px-8 py-4"
+              >
                 <Link href="/signup">Start Learning Now</Link>
               </Button>
-              <Button size="lg" variant="outline" asChild className="text-lg px-8 py-4">
+              <Button
+                size="lg"
+                variant="outline"
+                asChild
+                className="text-lg px-8 py-4"
+              >
                 <Link href="/login">Already have an account?</Link>
               </Button>
             </div>
@@ -71,7 +89,8 @@ export default function Landing() {
                 </div>
                 <CardTitle>AI Tutor Chat</CardTitle>
                 <CardDescription>
-                  Interactive conversations with an AI tutor specialized in IB Mathematics AA and AI
+                  Interactive conversations with an AI tutor specialized in IB
+                  Mathematics AA and AI
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -91,7 +110,8 @@ export default function Landing() {
                 </div>
                 <CardTitle>Math Tools</CardTitle>
                 <CardDescription>
-                  Comprehensive suite of mathematical tools integrated with your learning
+                  Comprehensive suite of mathematical tools integrated with your
+                  learning
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -131,11 +151,12 @@ export default function Landing() {
               Ready to Excel in IB Mathematics?
             </h2>
             <p className="text-slate-600 mb-8 max-w-2xl mx-auto">
-              Join thousands of students who have improved their understanding and grades with our AI-powered tutoring platform.
+              Join thousands of students who have improved their understanding
+              and grades with our AI-powered tutoring platform.
             </p>
-            <Button 
+            <Button
               size="lg"
-              onClick={() => window.location.href = '/api/login'}
+              onClick={() => (window.location.href = "/api/login")}
               className="bg-primary hover:bg-blue-700 text-lg px-8 py-4"
             >
               Get Started Free
@@ -154,7 +175,8 @@ export default function Landing() {
                 <span className="text-xl font-semibold">AI Tutor</span>
               </div>
               <p className="text-slate-400">
-                Empowering students to master IB Mathematics with AI-powered learning tools.
+                Empowering students to master IB Mathematics with AI-powered
+                learning tools.
               </p>
             </div>
           </div>

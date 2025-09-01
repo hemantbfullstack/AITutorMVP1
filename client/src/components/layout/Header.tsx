@@ -1,8 +1,14 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { MessageSquare, FileText, LogOut, Settings, Users, BarChart3 } from "lucide-react";
-
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  MessageSquare,
+  FileText,
+  LogOut,
+  Settings,
+  Users,
+  BarChart3,
+} from "lucide-react";
 
 export default function Header() {
   const [location] = useLocation();
@@ -11,9 +17,9 @@ export default function Header() {
   const handleLogout = async () => {
     try {
       await logout();
-      window.location.href = '/';
+      window.location.href = "/";
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     }
   };
 
@@ -35,7 +41,7 @@ export default function Header() {
 
   const getNavItems = () => {
     if (!isAuthenticated) return guestNavItems;
-    if (user?.role === 'admin') return [...userNavItems, ...adminNavItems];
+    if (user?.role === "admin") return [...userNavItems, ...adminNavItems];
     return userNavItems;
   };
 
@@ -54,7 +60,7 @@ export default function Header() {
                 </h1>
               </Link>
             </div>
-            
+
             <div className="hidden md:flex space-x-4">
               {navItems.map(({ path, label, icon: Icon }) => (
                 <Link key={path} href={path}>

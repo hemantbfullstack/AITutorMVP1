@@ -5,16 +5,29 @@ import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/api";
 import { localSignupSchema, type LocalSignup } from "@shared/schema";
 
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
   const form = useForm<LocalSignup>({
     resolver: zodResolver(localSignupSchema),
     defaultValues: {
@@ -44,16 +57,16 @@ export default function Signup() {
       const result = await response.json();
       return result;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       // Invalidate and refetch user data to update authentication state
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
-      
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      await queryClient.refetchQueries({ queryKey: ["auth", "user"] });
+
       toast({
         title: "Success",
         description: "Account created successfully!",
       });
-      
+
       // Small delay to ensure state is updated before navigation
       setTimeout(() => {
         setLocation("/");
@@ -77,9 +90,7 @@ export default function Signup() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>
-            Get started with your new account
-          </CardDescription>
+          <CardDescription>Get started with your new account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -102,7 +113,7 @@ export default function Signup() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="lastName"
@@ -140,7 +151,7 @@ export default function Signup() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="password"
@@ -166,14 +177,22 @@ export default function Signup() {
                 disabled={signupMutation.isPending}
                 data-testid="button-signup"
               >
-                {signupMutation.isPending ? "Creating account..." : "Create Account"}
+                {signupMutation.isPending
+                  ? "Creating account..."
+                  : "Create Account"}
               </Button>
             </form>
           </Form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
-            <Link href="/login" className="text-primary hover:underline" data-testid="link-login">
+            <span className="text-muted-foreground">
+              Already have an account?{" "}
+            </span>
+            <Link
+              href="/login"
+              className="text-primary hover:underline"
+              data-testid="link-login"
+            >
               Sign in
             </Link>
           </div>

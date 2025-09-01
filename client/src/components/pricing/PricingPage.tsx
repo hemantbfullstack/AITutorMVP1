@@ -1,10 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Check, Star, Zap, Calculator, Brain, BookOpen, HelpCircle, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { fetchPlans, createCheckoutSession, type StripePlan } from '@/utils/stripeClient';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from "react";
+import {
+  Check,
+  Star,
+  Zap,
+  Calculator,
+  Brain,
+  BookOpen,
+  HelpCircle,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  fetchPlans,
+  createCheckoutSession,
+  type StripePlan,
+} from "@/utils/stripeClient";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const PricingPage: React.FC = () => {
   const [plans, setPlans] = useState<StripePlan[]>([]);
@@ -22,17 +41,23 @@ const PricingPage: React.FC = () => {
         setError(null);
         const fetchedPlans = await fetchPlans();
         setPlans(fetchedPlans);
-        
+
         // Check if any paid plans are missing stripePriceId
-        const missingStripeIds = fetchedPlans.filter(plan => 
-          plan.price > 0 && plan.interval !== "lifetime" && !plan.stripePriceId
+        const missingStripeIds = fetchedPlans.filter(
+          (plan) =>
+            plan.price > 0 &&
+            plan.interval !== "lifetime" &&
+            !plan.stripePriceId
         );
-        
+
         if (missingStripeIds.length > 0) {
-          console.warn('Some plans are missing Stripe price IDs:', missingStripeIds);
+          console.warn(
+            "Some plans are missing Stripe price IDs:",
+            missingStripeIds
+          );
         }
       } catch (error: any) {
-        console.error('Failed to load plans:', error);
+        console.error("Failed to load plans:", error);
         setError(error.message);
         toast({
           title: "Failed to Load Plans",
@@ -48,7 +73,7 @@ const PricingPage: React.FC = () => {
   }, [toast]);
 
   const handlePlanSelect = async (plan: StripePlan) => {
-    if (plan.id === 'free') {
+    if (plan.id === "free") {
       toast({
         title: "Free Plan Selected",
         description: "You're already on the free plan!",
@@ -68,7 +93,8 @@ const PricingPage: React.FC = () => {
     if (!plan.stripePriceId) {
       toast({
         title: "Plan Not Available",
-        description: "This plan is not available for purchase at the moment. Please contact support.",
+        description:
+          "This plan is not available for purchase at the moment. Please contact support.",
         variant: "destructive",
       });
       return;
@@ -86,10 +112,12 @@ const PricingPage: React.FC = () => {
       // Redirect to Stripe checkout
       window.location.href = checkoutUrl;
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      console.error("Checkout error:", error);
       toast({
         title: "Checkout Failed",
-        description: error.message || "Unable to start checkout process. Please try again.",
+        description:
+          error.message ||
+          "Unable to start checkout process. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -98,21 +126,30 @@ const PricingPage: React.FC = () => {
   };
 
   const getIconForFeature = (feature: string) => {
-    if (feature.includes('AI') || feature.includes('tutor')) return <Brain className="w-4 h-4" />;
-    if (feature.includes('math') || feature.includes('tools')) return <Calculator className="w-4 h-4" />;
-    if (feature.includes('paper') || feature.includes('generation')) return <BookOpen className="w-4 h-4" />;
-    if (feature.includes('support')) return <HelpCircle className="w-4 h-4" />;
-    if (feature.includes('fast') || feature.includes('priority')) return <Zap className="w-4 h-4" />;
+    if (feature.includes("AI") || feature.includes("tutor"))
+      return <Brain className="w-4 h-4" />;
+    if (feature.includes("math") || feature.includes("tools"))
+      return <Calculator className="w-4 h-4" />;
+    if (feature.includes("paper") || feature.includes("generation"))
+      return <BookOpen className="w-4 h-4" />;
+    if (feature.includes("support")) return <HelpCircle className="w-4 h-4" />;
+    if (feature.includes("fast") || feature.includes("priority"))
+      return <Zap className="w-4 h-4" />;
     return <Check className="w-4 h-4" />;
   };
 
   const formatInterval = (interval: string) => {
     switch (interval) {
-      case 'hourly': return 'hour';
-      case 'monthly': return 'month';
-      case 'yearly': return 'year';
-      case 'lifetime': return 'lifetime';
-      default: return interval;
+      case "hourly":
+        return "hour";
+      case "monthly":
+        return "month";
+      case "yearly":
+        return "year";
+      case "lifetime":
+        return "lifetime";
+      default:
+        return interval;
     }
   };
 
@@ -152,19 +189,22 @@ const PricingPage: React.FC = () => {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-200/40 rounded-full blur-3xl opacity-40 animate-pulse" />
         <div className="absolute bottom-0 right-1/3 w-[400px] h-[400px] bg-indigo-200/40 rounded-full blur-2xl opacity-30 animate-pulse delay-700" />
       </div>
-  
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-20">
           <h1 className="text-5xl font-extrabold tracking-tight text-gray-900 mb-6">
-            Choose Your <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">AI Tutor Plan</span>
+            Choose Your{" "}
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              AI Tutor Plan
+            </span>
           </h1>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Unlock the full potential of AI-powered mathematics tutoring.  
-            Pick the plan that grows with your learning journey.
+            Unlock the full potential of AI-powered mathematics tutoring. Pick
+            the plan that grows with your learning journey.
           </p>
         </div>
-  
+
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-24">
           {plans.map((plan) => (
@@ -174,7 +214,9 @@ const PricingPage: React.FC = () => {
                 plan.popular
                   ? "border-blue-600 bg-white/80"
                   : "border-gray-200 bg-white/70"
-              } ${!plan.stripePriceId && plan.id !== 'free' ? 'opacity-60' : ''}`}
+              } ${
+                !plan.stripePriceId && plan.id !== "free" ? "opacity-60" : ""
+              }`}
             >
               {plan.popular && (
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2">
@@ -183,7 +225,7 @@ const PricingPage: React.FC = () => {
                   </span>
                 </div>
               )}
-  
+
               <div className="p-8 flex flex-col h-full">
                 {/* Plan Header */}
                 <div className="text-center mb-8">
@@ -192,7 +234,7 @@ const PricingPage: React.FC = () => {
                   </h3>
                   <p className="text-gray-500 text-sm">{plan.description}</p>
                 </div>
-  
+
                 {/* Price */}
                 <div className="text-center mb-8">
                   <div className="flex items-baseline justify-center">
@@ -207,11 +249,12 @@ const PricingPage: React.FC = () => {
                   </div>
                   {plan.limit && (
                     <p className="text-sm text-gray-500 mt-2">
-                      {plan.limit === 2500 ? 'Unlimited' : plan.limit} questions / {formatInterval(plan.interval)}
+                      {plan.limit === 2500 ? "Unlimited" : plan.limit} questions
+                      / {formatInterval(plan.interval)}
                     </p>
                   )}
                 </div>
-  
+
                 {/* Features */}
                 <div className="flex-1 space-y-4 mb-8">
                   {plan.features.map((feature, index) => (
@@ -223,10 +266,10 @@ const PricingPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-  
+
                 {/* Action Button */}
                 <div className="mt-auto">
-                  {plan.id === 'free' ? (
+                  {plan.id === "free" ? (
                     <Button
                       onClick={() => handlePlanSelect(plan)}
                       className="w-full bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
@@ -246,8 +289,8 @@ const PricingPage: React.FC = () => {
                       onClick={() => handlePlanSelect(plan)}
                       className={`w-full ${
                         plan.popular
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                          : 'bg-gray-900 hover:bg-gray-800'
+                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                          : "bg-gray-900 hover:bg-gray-800"
                       } text-white`}
                       disabled={isLoading}
                     >
@@ -266,7 +309,7 @@ const PricingPage: React.FC = () => {
             </div>
           ))}
         </div>
-  
+
         {/* FAQ Section */}
         <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-xl p-12">
           <h2 className="text-3xl font-extrabold text-gray-900 text-center mb-12">

@@ -1,22 +1,42 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { detectDrawingIntent, createUIAction, UIAction } from "@/lib/intentDetector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  detectDrawingIntent,
+  createUIAction,
+  UIAction,
+} from "@/lib/intentDetector";
 import { parseGraphQuery, detectGraphIntent } from "@/lib/parseGraphQuery";
 import { emitGraphRender } from "@/lib/graphBus";
 import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { fetchWolframImage, parsePlotQuery } from "@/utils/wolframClient";
-import TutorSelector from './TutorSelector';
-import { Play, Pause, Volume2, CheckCircle, GraduationCap, User, Copy, Settings, Crown, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import TutorSelector from "./TutorSelector";
+import {
+  Play,
+  Pause,
+  Volume2,
+  CheckCircle,
+  GraduationCap,
+  User,
+  Copy,
+  Settings,
+  Crown,
+  AlertCircle,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { UsageIndicator } from "./UsageIndicator";
-
 
 interface Message {
   id: string;
@@ -31,7 +51,10 @@ interface ChatAreaProps {
   onTriggerVisual?: (action: UIAction) => void;
 }
 
-export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatAreaProps) {
+export default function ChatArea({
+  onToggleMobileTools,
+  onTriggerVisual,
+}: ChatAreaProps) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -39,36 +62,38 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   const [ibSubject, setIbSubject] = useState<"AA" | "AI">("AA");
   const [ibLevel, setIbLevel] = useState<"HL" | "SL">("HL");
   const [selfTestResult, setSelfTestResult] = useState<string | null>(null);
-  const [selectedVoiceId, setSelectedVoiceId] = useState<string>("21m00Tcm4TlvDq8ikWAM"); // Default to Rachel
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>(
+    "21m00Tcm4TlvDq8ikWAM"
+  ); // Default to Rachel
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user: storeUser } = useAuth();
-  
+
   // Add usage limit check function locally
   const isUsageLimitReached = () => {
     if (!storeUser || !storeUser.planId) return false;
-    
+
     const plans = [
       { id: "free", limit: 5 },
       { id: "hourly", limit: 100 },
       { id: "monthly", limit: 200 },
-      { id: "annual", limit: 2500 }
+      { id: "annual", limit: 2500 },
     ];
-    
-    const plan = plans.find(p => p.id === storeUser.planId);
+
+    const plan = plans.find((p) => p.id === storeUser.planId);
     if (!plan || !plan.limit) return false;
-    
+
     return storeUser.usageCount >= plan.limit;
   };
 
-  console.log('ChatArea: user from store:', storeUser); // Debug log
-  console.log('ChatArea: isUsageLimitReached:', isUsageLimitReached()); // Debug log
+  console.log("ChatArea: user from store:", storeUser); // Debug log
+  console.log("ChatArea: isUsageLimitReached:", isUsageLimitReached()); // Debug log
 
   // Load voice preference from localStorage
   useEffect(() => {
-    const savedVoiceId = localStorage.getItem('selectedVoiceId');
+    const savedVoiceId = localStorage.getItem("selectedVoiceId");
     if (savedVoiceId) {
       setSelectedVoiceId(savedVoiceId);
     }
@@ -77,15 +102,24 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   // Save voice preference to localStorage
   const handleVoiceChange = (voiceId: string) => {
     setSelectedVoiceId(voiceId);
-    localStorage.setItem('selectedVoiceId', voiceId);
-    
+    localStorage.setItem("selectedVoiceId", voiceId);
+
     // Force re-render of all message bubbles
-    setMessages(prev => [...prev]);
+    setMessages((prev) => [...prev]);
   };
 
   // Fetch sessions
   const { data: sessions } = useQuery({
     queryKey: ["/api/tutor/sessions"],
+    queryFn: async () => {
+      const response = await fetch("/api/tutor/sessions", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch sessions");
+      }
+      return response.json();
+    },
     retry: false,
   });
 
@@ -100,9 +134,11 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
     if (!currentSessionId) return;
 
     try {
-      const response = await apiRequest("GET", `/api/tutor/session/${currentSessionId}`);
+      const response = await apiRequest(
+        `/api/tutor/session/${currentSessionId}`
+      );
       const data = await response.json();
-      
+
       // Only update messages if we don't have any current messages
       // This prevents overwriting user messages that haven't been sent yet
       if (messages.length === 0) {
@@ -131,19 +167,26 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
       if (!detail) return;
 
       if (detail.kind === "graph") {
-        const { expression, range } = detail as { expression: string; range: [number, number] };
+        const { expression, range } = detail as {
+          expression: string;
+          range: [number, number];
+        };
         const msg = `Explain the graph of y = ${expression} on [${range[0]}, ${range[1]}] in IB style.`;
         handleSendMessage(msg);
       } else if (detail.kind === "text") {
         handleSendMessage(detail.text);
       } else if (detail.kind === "image") {
-        const { text, imageBase64 } = detail as { text: string; imageBase64: string };
+        const { text, imageBase64 } = detail as {
+          text: string;
+          imageBase64: string;
+        };
         handleSendMessageWithImage(text, imageBase64);
       }
     };
 
     window.addEventListener("app:sendToChat", handler as EventListener);
-    return () => window.removeEventListener("app:sendToChat", handler as EventListener);
+    return () =>
+      window.removeEventListener("app:sendToChat", handler as EventListener);
   }, []);
 
   // Self-test mutation
@@ -194,7 +237,13 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
   });
 
   const sendMessage = useMutation({
-    mutationFn: async ({ message, useNonStream = false }: { message: string; useNonStream?: boolean }) => {
+    mutationFn: async ({
+      message,
+      useNonStream = false,
+    }: {
+      message: string;
+      useNonStream?: boolean;
+    }) => {
       // Validate input
       const trimmed = message.trim();
       if (!trimmed) {
@@ -211,9 +260,11 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         content: trimmed,
         createdAt: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, userMessage]);
+      setMessages((prev) => [...prev, userMessage]);
 
-      const url = useNonStream ? "/api/tutor/message?mode=nonstream" : "/api/tutor/message";
+      const url = useNonStream
+        ? "/api/tutor/message?mode=nonstream"
+        : "/api/tutor/message";
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -230,7 +281,9 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorWithCode = new Error(errorData.error || "Failed to send message") as any;
+        const errorWithCode = new Error(
+          errorData.error || "Failed to send message"
+        ) as any;
         errorWithCode.code = errorData.code;
         errorWithCode.retryWithNonStream = errorData.retryWithNonStream;
         throw errorWithCode;
@@ -267,7 +320,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           }
         }
 
-        return { content: assistantContent, mode: 'stream' };
+        return { content: assistantContent, mode: "stream" };
       }
     },
     onSuccess: (data) => {
@@ -278,7 +331,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         content: data.content,
         createdAt: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
       setStreamingMessage("");
       setIsStreaming(false);
 
@@ -290,7 +343,11 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
       setStreamingMessage("");
 
       // Remove the user message if there was an error
-      setMessages(prev => prev.filter(msg => msg.role !== "user" || msg.content !== error.originalMessage));
+      setMessages((prev) =>
+        prev.filter(
+          (msg) => msg.role !== "user" || msg.content !== error.originalMessage
+        )
+      );
 
       if (isUnauthorizedError(error)) {
         toast({
@@ -311,7 +368,8 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
       switch (error.code) {
         case "MISSING_API_KEY":
           errorTitle = "Configuration Error";
-          errorDescription = "Tutor not configured: add OPENAI_API_KEY in Secrets.";
+          errorDescription =
+            "Tutor not configured: add OPENAI_API_KEY in Secrets.";
           break;
         case "AUTH_FAILED":
           errorTitle = "OpenAI Error";
@@ -327,7 +385,8 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           break;
         case "STREAM_FAILED":
           errorTitle = "Connection Issue";
-          errorDescription = "Temporary connection issue; trying non-streaming mode.";
+          errorDescription =
+            "Temporary connection issue; trying non-streaming mode.";
           break;
         case "VALIDATION_ERROR":
           errorTitle = "Invalid Input";
@@ -350,7 +409,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         setTimeout(() => {
           sendMessage.mutate({
             message: error.originalMessage || "",
-            useNonStream: true
+            useNonStream: true,
           });
         }, 1000);
       }
@@ -368,10 +427,13 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
       image: imageBase64,
       createdAt: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, imageMessage]);
+    setMessages((prev) => [...prev, imageMessage]);
 
     // Also send the message content to the AI tutor for explanation
-    sendMessage.mutate({ message: `Please explain this graph: ${message}`, useNonStream: false });
+    sendMessage.mutate({
+      message: `Please explain this graph: ${message}`,
+      useNonStream: false,
+    });
   };
 
   const handleSendMessage = async (message: string) => {
@@ -379,7 +441,8 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
     if (isUsageLimitReached()) {
       toast({
         title: "Usage Limit Reached",
-        description: "You've reached your question limit. Please upgrade your plan to continue.",
+        description:
+          "You've reached your question limit. Please upgrade your plan to continue.",
         variant: "destructive",
       });
       return;
@@ -402,14 +465,17 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
           image: imageBase64,
           createdAt: new Date().toISOString(),
         };
-        setMessages(prev => [...prev, plotMessage]);
+        setMessages((prev) => [...prev, plotMessage]);
         console.log("Added plot message to chat");
 
         // Send to AI for explanation after a small delay to ensure plot message is rendered
         setTimeout(() => {
           sendMessage.mutate({
-            message: `Explain this mathematical graph: ${plotQuery.replace(/^plot\s+/i, "")}`,
-            useNonStream: false
+            message: `Explain this mathematical graph: ${plotQuery.replace(
+              /^plot\s+/i,
+              ""
+            )}`,
+            useNonStream: false,
           });
         }, 100);
         return; // Don't continue with normal message flow
@@ -418,10 +484,12 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         const errorMessage: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `Couldn't render with Wolfram: ${error?.message || "unknown error"}`,
+          content: `Couldn't render with Wolfram: ${
+            error?.message || "unknown error"
+          }`,
           createdAt: new Date().toISOString(),
         };
-        setMessages(prev => [...prev, errorMessage]);
+        setMessages((prev) => [...prev, errorMessage]);
         return; // Don't continue with normal message flow
       }
     }
@@ -434,23 +502,27 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         emitGraphRender({
           functions: graphData.functions,
           xmin: graphData.xmin,
-          xmax: graphData.xmax
+          xmax: graphData.xmax,
         });
 
         // Show notification that graph was rendered
         toast({
           title: "Graph Rendered",
-          description: `Plotted: ${graphData.functions.join(", ")} on [${graphData.xmin}, ${graphData.xmax}]`,
+          description: `Plotted: ${graphData.functions.join(", ")} on [${
+            graphData.xmin
+          }, ${graphData.xmax}]`,
         });
 
         // Add system note to chat
         const systemNote: Message = {
           id: crypto.randomUUID(),
           role: "system",
-          content: `📊 Rendered graph: ${graphData.functions.join(", ")} on [${graphData.xmin}, ${graphData.xmax}]`,
+          content: `📊 Rendered graph: ${graphData.functions.join(", ")} on [${
+            graphData.xmin
+          }, ${graphData.xmax}]`,
           createdAt: new Date().toISOString(),
         };
-        setMessages(prev => [...prev, systemNote]);
+        setMessages((prev) => [...prev, systemNote]);
       }
     }
 
@@ -465,7 +537,9 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         if (action.type === "triangle") {
           toast({
             title: "Drawing Triangle",
-            description: `Opening ${action.variant || 'generic'} triangle in Shapes panel`,
+            description: `Opening ${
+              action.variant || "generic"
+            } triangle in Shapes panel`,
           });
         }
       }
@@ -500,10 +574,15 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <i className="fas fa-robot text-primary text-lg"></i>
-            <h1 className="text-lg font-semibold text-slate-900">IB Math Tutor</h1>
+            <h1 className="text-lg font-semibold text-slate-900">
+              IB Math Tutor
+            </h1>
           </div>
           <div className="flex items-center space-x-2 text-sm">
-            <Select value={ibSubject} onValueChange={(value: "AA" | "AI") => setIbSubject(value)}>
+            <Select
+              value={ibSubject}
+              onValueChange={(value: "AA" | "AI") => setIbSubject(value)}
+            >
               <SelectTrigger className="w-24">
                 <SelectValue />
               </SelectTrigger>
@@ -512,7 +591,10 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
                 <SelectItem value="AI">Math AI</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={ibLevel} onValueChange={(value: "HL" | "SL") => setIbLevel(value)}>
+            <Select
+              value={ibLevel}
+              onValueChange={(value: "HL" | "SL") => setIbLevel(value)}
+            >
               <SelectTrigger className="w-24">
                 <SelectValue />
               </SelectTrigger>
@@ -535,7 +617,11 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
             {selfTest.isPending ? "Testing..." : "Self-Test"}
           </Button>
           {selfTestResult && (
-            <span className={`text-xs ${selfTestResult.includes('✓') ? 'text-green-600' : 'text-red-600'}`}>
+            <span
+              className={`text-xs ${
+                selfTestResult.includes("✓") ? "text-green-600" : "text-red-600"
+              }`}
+            >
               {selfTestResult}
             </span>
           )}
@@ -566,7 +652,7 @@ export default function ChatArea({ onToggleMobileTools, onTriggerVisual }: ChatA
               onVoiceChange={handleVoiceChange}
             />
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -630,9 +716,17 @@ What would you like to work on today?`}
             <div className="bg-white rounded-lg px-4 py-3 shadow-sm border border-slate-200">
               <div className="flex items-center space-x-1">
                 <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <span className="text-slate-500 text-sm ml-2">Tutor is thinking...</span>
+                <div
+                  className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                ></div>
+                <div
+                  className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
+                <span className="text-slate-500 text-sm ml-2">
+                  Tutor is thinking...
+                </span>
               </div>
             </div>
           </div>

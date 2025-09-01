@@ -1,23 +1,32 @@
+import React, { lazy, Suspense, useMemo } from "react";
 import { Switch, Route } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/components/layout/mainLayout";
 
-// Pages
-import Landing from "@/pages/landing";
-import Login from "@/pages/login";
-import Signup from "@/pages/signup";
-import Tutor from "@/pages/tutor";
-import Papers from "@/pages/papers";
-import NotFound from "@/pages/not-found";
-import PricingPage from '@/components/pricing/PricingPage';
-import SuccessPage from '@/pages/success';
-import CancelPage from '@/pages/cancel';
+// Lazy load heavy pages
+const Landing = lazy(() => import("@/pages/landing"));
+const Login = lazy(() => import("@/pages/login"));
+const Signup = lazy(() => import("@/pages/signup"));
+const Tutor = lazy(() => import("@/pages/tutor"));
+const Papers = lazy(() => import("@/pages/papers"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const PricingPage = lazy(() => import("@/components/pricing/PricingPage"));
+const SuccessPage = lazy(() => import("@/pages/success"));
+const CancelPage = lazy(() => import("@/pages/cancel"));
 
-// Admin Components
-import PlanSync from '@/components/admin/PlanSync';
-import { AdminDashboard } from '@/components/admin/AdminDashboard';
-import { UserManagement } from '@/components/admin/UserManagement';
+// Admin Components - lazy load these too
+const PlanSync = lazy(() => import("@/components/admin/PlanSync"));
+const AdminDashboard = lazy(() =>
+  import("@/components/admin/AdminDashboard").then((m) => ({
+    default: m.AdminDashboard,
+  }))
+);
+const UserManagement = lazy(() =>
+  import("@/components/admin/UserManagement").then((m) => ({
+    default: m.UserManagement,
+  }))
+);
 
 // Loading Component
 const LoadingSpinner = () => (
@@ -31,8 +40,102 @@ const LoadingSpinner = () => (
   </MainLayout>
 );
 
+// Memoized route components to prevent unnecessary re-renders
+const AuthenticatedTutor = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <Tutor />
+  </Suspense>
+));
+
+const PublicLanding = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <Landing />
+  </Suspense>
+));
+
+const PublicLogin = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <Login />
+  </Suspense>
+));
+
+const PublicSignup = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <Signup />
+  </Suspense>
+));
+
+const PublicPricing = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <PricingPage />
+  </Suspense>
+));
+
+const PublicSuccess = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <SuccessPage />
+  </Suspense>
+));
+
+const PublicCancel = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <CancelPage />
+  </Suspense>
+));
+
+const ProtectedTutor = React.memo(() => (
+  <ProtectedRoute>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Tutor />
+    </Suspense>
+  </ProtectedRoute>
+));
+
+const ProtectedPapers = React.memo(() => (
+  <ProtectedRoute>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Papers />
+    </Suspense>
+  </ProtectedRoute>
+));
+
+const ProtectedAdminDashboard = React.memo(() => (
+  <ProtectedRoute requiredRole="admin">
+    <Suspense fallback={<LoadingSpinner />}>
+      <AdminDashboard />
+    </Suspense>
+  </ProtectedRoute>
+));
+
+const ProtectedUserManagement = React.memo(() => (
+  <ProtectedRoute requiredRole="admin">
+    <Suspense fallback={<LoadingSpinner />}>
+      <UserManagement />
+    </Suspense>
+  </ProtectedRoute>
+));
+
+const ProtectedPlanSync = React.memo(() => (
+  <ProtectedRoute requiredRole="admin">
+    <Suspense fallback={<LoadingSpinner />}>
+      <PlanSync />
+    </Suspense>
+  </ProtectedRoute>
+));
+
+const PublicNotFound = React.memo(() => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <NotFound />
+  </Suspense>
+));
+
 export default function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Memoize the root route component to prevent unnecessary re-renders
+  const RootComponent = useMemo(() => {
+    return isAuthenticated ? AuthenticatedTutor : PublicLanding;
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -41,47 +144,24 @@ export default function AppRouter() {
   return (
     <Switch>
       {/* Public routes - always accessible */}
-      <Route path="/" component={isAuthenticated ? Tutor : Landing} />
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
-      <Route path="/pricing" component={PricingPage} />
-      <Route path="/success" component={SuccessPage} />
-      <Route path="/cancel" component={CancelPage} />
-      
+      <Route path="/" component={RootComponent} />
+      <Route path="/login" component={PublicLogin} />
+      <Route path="/signup" component={PublicSignup} />
+      <Route path="/pricing" component={PublicPricing} />
+      <Route path="/success" component={PublicSuccess} />
+      <Route path="/cancel" component={PublicCancel} />
+
       {/* Protected routes - require authentication */}
-      <Route path="/tutor" component={() => (
-        <ProtectedRoute>
-          <Tutor />
-        </ProtectedRoute>
-      )} />
-      
-      <Route path="/papers" component={() => (
-        <ProtectedRoute>
-          <Papers />
-        </ProtectedRoute>
-      )} />
-      
+      <Route path="/tutor" component={ProtectedTutor} />
+      <Route path="/papers" component={ProtectedPapers} />
+
       {/* Admin Routes - require admin role */}
-      <Route path="/admin" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <AdminDashboard />
-        </ProtectedRoute>
-      )} />
-      
-      <Route path="/admin/users" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <UserManagement />
-        </ProtectedRoute>
-      )} />
-      
-      <Route path="/admin/sync" component={() => (
-        <ProtectedRoute requiredRole="admin">
-          <PlanSync />
-        </ProtectedRoute>
-      )} />
-      
+      <Route path="/admin" component={ProtectedAdminDashboard} />
+      <Route path="/admin/users" component={ProtectedUserManagement} />
+      <Route path="/admin/sync" component={ProtectedPlanSync} />
+
       {/* 404 - only show when no other routes match */}
-      <Route component={NotFound} />
+      <Route component={PublicNotFound} />
     </Switch>
   );
 }

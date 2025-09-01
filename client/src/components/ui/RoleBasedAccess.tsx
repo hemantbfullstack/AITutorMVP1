@@ -1,5 +1,5 @@
-import React from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import React from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface RoleBasedAccessProps {
   children: React.ReactNode;
@@ -7,17 +7,17 @@ interface RoleBasedAccessProps {
   fallback?: React.ReactNode;
 }
 
-export const RoleBasedAccess: React.FC<RoleBasedAccessProps> = ({ 
-  children, 
-  allowedRoles, 
-  fallback = null 
+export const RoleBasedAccess: React.FC<RoleBasedAccessProps> = ({
+  children,
+  allowedRoles,
+  fallback = null,
 }) => {
   const { user } = useAuth();
-  
+
   if (!user || !allowedRoles.includes(user.role)) {
     return fallback;
   }
-  
+
   return <>{children}</>;
 };
 

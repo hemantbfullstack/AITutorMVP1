@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import ChatArea from "@/components/chat/ChatArea";
 import MathToolsSidebar from "@/components/tools/MathToolsSidebar";
@@ -81,84 +81,84 @@ export default function Tutor() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-slate-50">      
-      <div className="pt-16 min-h-screen flex">
-        {/* Main Chat Area */}
-        <div className={`flex-1 flex flex-col ${mainContentMargin}`}>
-          <ChatArea 
-            onToggleMobileTools={() => setShowMobileTools(!showMobileTools)}
-            onTriggerVisual={handleVisualTrigger}
-          />
-        </div>
+      <div className="min-h-screen bg-slate-50">
+        <div className="pt-16 min-h-screen flex">
+          {/* Main Chat Area */}
+          <div className={`flex-1 flex flex-col ${mainContentMargin}`}>
+            <ChatArea
+              onToggleMobileTools={() => setShowMobileTools(!showMobileTools)}
+              onTriggerVisual={handleVisualTrigger}
+            />
+          </div>
 
-        {/* Math Tools Sidebar - Desktop */}
-        <div className={`hidden lg:block ${sidebarWidth} bg-white border-l border-slate-200 fixed right-0 top-16 bottom-0 overflow-hidden transition-all duration-300 ease-in-out`}>
-          {/* Sidebar Toggle Button */}
-          <button
-            onClick={toggleSidebar}
-            className="absolute -left-3 top-4 bg-white border border-slate-200 rounded-full p-1 shadow-md hover:shadow-lg transition-shadow z-10"
-            title={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          {/* Math Tools Sidebar - Desktop */}
+          <div
+            className={`hidden lg:block ${sidebarWidth} bg-white border-l border-slate-200 fixed right-0 top-16 bottom-0 overflow-hidden transition-all duration-300 ease-in-out`}
           >
-            {sidebarExpanded ? (
-              <ChevronRight className="w-4 h-4 text-slate-600" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-slate-600" />
-            )}
-          </button>
-
-          <MathToolsSidebar 
-            highlightTriangleType={visualState.highlightTriangleType}
-            customVertices={visualState.customVertices}
-            openShapesTab={visualState.openShapesTab}
-            graphFunctions={visualState.graphFunctions}
-            graphRange={visualState.graphRange}
-            isExpanded={sidebarExpanded}
-          />
-        </div>
-
-        {/* Math Tools Drawer - Mobile */}
-        {showMobileTools && (
-          <div 
-            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50"
-            onClick={() => setShowMobileTools(false)}
-          >
-            <div 
-              className="absolute right-0 top-0 bottom-0 w-96 max-w-full bg-white"
-              onClick={(e) => e.stopPropagation()}
+            {/* Sidebar Toggle Button */}
+            <button
+              onClick={toggleSidebar}
+              className="absolute -left-3 top-4 bg-white border border-slate-200 rounded-full p-1 shadow-md hover:shadow-lg transition-shadow z-10"
+              title={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
             >
-              <div className="h-full flex flex-col">
-                {/* Mobile Header */}
-                <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-slate-900 flex items-center">
-                    <i className="fas fa-tools text-primary mr-2"></i>
-                    Math Tools
-                  </h2>
-                  <button 
-                    className="text-slate-500 hover:text-slate-700"
-                    onClick={() => setShowMobileTools(false)}
-                  >
-                    <i className="fas fa-times text-xl"></i>
-                  </button>
-                </div>
-                
-                <div className="flex-1 overflow-hidden">
-                  <MathToolsSidebar 
-                    highlightTriangleType={visualState.highlightTriangleType}
-                    customVertices={visualState.customVertices}
-                    openShapesTab={visualState.openShapesTab}
-                    graphFunctions={visualState.graphFunctions}
-                    graphRange={visualState.graphRange}
-                    isExpanded={true}
-                  />
+              {sidebarExpanded ? (
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              ) : (
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              )}
+            </button>
+
+            <MathToolsSidebar
+              highlightTriangleType={visualState.highlightTriangleType}
+              customVertices={visualState.customVertices}
+              openShapesTab={visualState.openShapesTab}
+              graphFunctions={visualState.graphFunctions}
+              graphRange={visualState.graphRange}
+              isExpanded={sidebarExpanded}
+            />
+          </div>
+
+          {/* Math Tools Drawer - Mobile */}
+          {showMobileTools && (
+            <div
+              className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50"
+              onClick={() => setShowMobileTools(false)}
+            >
+              <div
+                className="absolute right-0 top-0 bottom-0 w-96 max-w-full bg-white"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="h-full flex flex-col">
+                  {/* Mobile Header */}
+                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900 flex items-center">
+                      <i className="fas fa-tools text-primary mr-2"></i>
+                      Math Tools
+                    </h2>
+                    <button
+                      className="text-slate-500 hover:text-slate-700"
+                      onClick={() => setShowMobileTools(false)}
+                    >
+                      <i className="fas fa-times text-xl"></i>
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-hidden">
+                    <MathToolsSidebar
+                      highlightTriangleType={visualState.highlightTriangleType}
+                      customVertices={visualState.customVertices}
+                      openShapesTab={visualState.openShapesTab}
+                      graphFunctions={visualState.graphFunctions}
+                      graphRange={visualState.graphRange}
+                      isExpanded={true}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-    
     </MainLayout>
-    
   );
 }

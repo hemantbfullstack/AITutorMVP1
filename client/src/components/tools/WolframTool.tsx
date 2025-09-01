@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Send, Brain, Loader2, AlertCircle } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api";
 
 interface WolframResult {
   query: string;
@@ -40,20 +40,21 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
         query,
         result: data.result || "No result available",
         image: data.image,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-      setResults(prev => [newResult, ...prev.slice(0, 4)]); // Keep last 5 results
+      setResults((prev) => [newResult, ...prev.slice(0, 4)]); // Keep last 5 results
       setQuery("");
     },
     onError: (error) => {
       console.error("Wolfram query error:", error);
       const errorResult: WolframResult = {
         query,
-        result: "Error: Unable to process query. Please check your connection and try again.",
-        timestamp: Date.now()
+        result:
+          "Error: Unable to process query. Please check your connection and try again.",
+        timestamp: Date.now(),
       };
-      setResults(prev => [errorResult, ...prev.slice(0, 4)]);
-    }
+      setResults((prev) => [errorResult, ...prev.slice(0, 4)]);
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,7 +77,7 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
     "derivative of sin(x^2)",
     "plot x^3 - 2x^2 + x",
     "limit of (sin x)/x as x approaches 0",
-    "matrix [[1,2],[3,4]] * [[5,6],[7,8]]"
+    "matrix [[1,2],[3,4]] * [[5,6],[7,8]]",
   ];
 
   return (
@@ -91,7 +92,9 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
       <Card className="p-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label className="text-sm font-medium mb-2 block">Ask Wolfram Alpha</Label>
+            <Label className="text-sm font-medium mb-2 block">
+              Ask Wolfram Alpha
+            </Label>
             <div className="flex gap-2">
               <Input
                 value={query}
@@ -116,7 +119,9 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
           </div>
 
           <div>
-            <Label className="text-sm font-medium mb-2 block">Example Queries</Label>
+            <Label className="text-sm font-medium mb-2 block">
+              Example Queries
+            </Label>
             <div className="flex flex-wrap gap-2">
               {exampleQueries.map((example, index) => (
                 <Button
@@ -142,12 +147,17 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
             <Brain className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>Enter a mathematical query to get started with Wolfram Alpha</p>
             <p className="text-sm mt-1">
-              Try queries like: "integrate x^2", "solve quadratic equations", or "plot functions"
+              Try queries like: "integrate x^2", "solve quadratic equations", or
+              "plot functions"
             </p>
           </Card>
         ) : (
           results.map((result, index) => (
-            <Card key={result.timestamp} className="p-4" data-testid={`result-${index}`}>
+            <Card
+              key={result.timestamp}
+              className="p-4"
+              data-testid={`result-${index}`}
+            >
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -194,8 +204,8 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
                       <span className="font-medium text-sm">Visualization</span>
                     </div>
                     <div className="border rounded overflow-hidden">
-                      <img 
-                        src={result.image} 
+                      <img
+                        src={result.image}
                         alt="Wolfram Alpha result visualization"
                         className="w-full h-auto"
                         data-testid={`image-result-${index}`}

@@ -1,7 +1,7 @@
-import axios from 'axios';
+import axios from "axios";
 
 const authApi = axios.create({
-  baseURL: '/api',
+  baseURL: "/api",
   withCredentials: true,
 });
 
@@ -20,27 +20,29 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'user' | 'admin' | 'student';
+  role: "user" | "admin" | "student";
   profileImageUrl?: string;
+  planId?: string;
+  usageCount?: number;
 }
 
 export const authService = {
   async login(data: LoginData): Promise<User> {
-    const res = await authApi.post('/auth/login', data);
+    const res = await authApi.post("/auth/login", data);
     return res.data.user;
   },
 
   async signup(data: SignupData): Promise<User> {
-    const res = await authApi.post('/auth/signup', data);
+    const res = await authApi.post("/auth/signup", data);
     return res.data.user;
   },
 
   async logout(): Promise<void> {
-    await authApi.post('/logout');
+    await authApi.post("/logout");
   },
 
   async getCurrentUser(): Promise<User> {
-    const res = await authApi.get('/auth/user');
+    const res = await authApi.get("/auth/user");
     return res.data;
   },
 };

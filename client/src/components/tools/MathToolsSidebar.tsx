@@ -6,7 +6,7 @@ import { WolframTool } from "./WolframTool";
 import { ShapesTab } from "./shapes/ShapesTab";
 import { TriangleType } from "./shapes/TriangleDrawer";
 import { onGraphRender, type GraphPayload } from "@/lib/graphBus";
-import { useChat } from "../../hooks/useChat";
+import { useChat } from "@/hooks/useChat";
 
 interface MathToolsSidebarProps {
   highlightTriangleType?: TriangleType;
@@ -17,16 +17,21 @@ interface MathToolsSidebarProps {
   isExpanded?: boolean;
 }
 
-export default function MathToolsSidebar({ 
-  highlightTriangleType, 
-  customVertices, 
+export default function MathToolsSidebar({
+  highlightTriangleType,
+  customVertices,
   openShapesTab,
   graphFunctions,
   graphRange,
-  isExpanded = true
+  isExpanded = true,
 }: MathToolsSidebarProps) {
-  const [activeTab, setActiveTab] = useState(openShapesTab ? "shapes" : "calculator");
-  const [currentGraphData, setCurrentGraphData] = useState<{ functions: string[], range: [number, number] } | null>(null);
+  const [activeTab, setActiveTab] = useState(
+    openShapesTab ? "shapes" : "calculator"
+  );
+  const [currentGraphData, setCurrentGraphData] = useState<{
+    functions: string[];
+    range: [number, number];
+  } | null>(null);
   const { sendToChatWithPayload } = useChat();
 
   // Listen for real-time graph render events from chat
@@ -34,7 +39,7 @@ export default function MathToolsSidebar({
     return onGraphRender((payload: GraphPayload) => {
       setCurrentGraphData({
         functions: payload.functions,
-        range: [payload.xmin, payload.xmax]
+        range: [payload.xmin, payload.xmax],
       });
       setActiveTab("graphs");
     });
@@ -74,34 +79,38 @@ export default function MathToolsSidebar({
       </div>
 
       {/* Tool Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex-1 flex flex-col min-h-0"
+      >
         <TabsList className="flex-shrink-0 grid w-full grid-cols-4 rounded-none border-b bg-white">
-          <TabsTrigger 
-            value="calculator" 
+          <TabsTrigger
+            value="calculator"
             className="text-xs px-2 py-3 data-[state=active]:bg-blue-50 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary"
             data-testid="tab-calculator"
           >
             <i className="fas fa-calculator mr-1"></i>
             Calculator
           </TabsTrigger>
-          <TabsTrigger 
-            value="graphs" 
+          <TabsTrigger
+            value="graphs"
             className="text-xs px-2 py-3 data-[state=active]:bg-blue-50 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary"
             data-testid="tab-graphs"
           >
             <i className="fas fa-chart-line mr-1"></i>
             Graphs
           </TabsTrigger>
-          <TabsTrigger 
-            value="wolfram" 
+          <TabsTrigger
+            value="wolfram"
             className="text-xs px-2 py-3 data-[state=active]:bg-blue-50 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary"
             data-testid="tab-wolfram"
           >
             <i className="fas fa-brain mr-1"></i>
             Wolfram
           </TabsTrigger>
-          <TabsTrigger 
-            value="shapes" 
+          <TabsTrigger
+            value="shapes"
             className="text-xs px-2 py-3 data-[state=active]:bg-blue-50 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary"
             data-testid="tab-shapes"
           >
@@ -111,25 +120,39 @@ export default function MathToolsSidebar({
         </TabsList>
 
         <div className="flex-1 overflow-hidden">
-          <TabsContent value="calculator" className="h-full m-0 p-4 overflow-y-auto">
+          <TabsContent
+            value="calculator"
+            className="h-full m-0 p-4 overflow-y-auto"
+          >
             <Calculator />
           </TabsContent>
-          
-          <TabsContent value="graphs" className="h-full m-0 p-4 overflow-y-auto">
-            <GraphTool 
-              onSendToChat={sendToChatWithPayload} 
+
+          <TabsContent
+            value="graphs"
+            className="h-full m-0 p-4 overflow-y-auto"
+          >
+            <GraphTool
+              onSendToChat={sendToChatWithPayload}
               initialFunction={currentGraphData?.functions || graphFunctions}
               initialRange={currentGraphData?.range || graphRange}
-              key={currentGraphData ? JSON.stringify(currentGraphData) : 'default'}
+              key={
+                currentGraphData ? JSON.stringify(currentGraphData) : "default"
+              }
             />
           </TabsContent>
-          
-          <TabsContent value="wolfram" className="h-full m-0 p-4 overflow-y-auto">
+
+          <TabsContent
+            value="wolfram"
+            className="h-full m-0 p-4 overflow-y-auto"
+          >
             <WolframTool onSendToChat={sendToChatWithPayload} />
           </TabsContent>
-          
-          <TabsContent value="shapes" className="h-full m-0 p-0 overflow-hidden">
-            <ShapesTab 
+
+          <TabsContent
+            value="shapes"
+            className="h-full m-0 p-0 overflow-hidden"
+          >
+            <ShapesTab
               highlightTriangleType={highlightTriangleType}
               customVertices={customVertices}
             />
