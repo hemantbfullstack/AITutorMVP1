@@ -80,8 +80,15 @@ export class DatabaseStorage implements IStorage {
 
   // Local authentication operations
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    try {
+      console.log("🔐 Looking up user by email:", email);
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      console.log("✅ User lookup result:", user ? "Found" : "Not found");
+      return user;
+    } catch (error) {
+      console.error("❌ Database error in getUserByEmail:", error);
+      throw error;
+    }
   }
 
   async createLocalUser(userData: { email: string; firstName: string; lastName: string; password: string }): Promise<User> {

@@ -8,7 +8,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import { localSignupSchema, localLoginSchema } from "@shared/schema";
+import { localSignupSchema } from "@shared/schema";
 
 // Check if we're running in Replit environment
 // Force local authentication when NODE_ENV is development to enable password-based auth
@@ -223,16 +223,23 @@ export async function setupAuth(app: Express) {
     });
 
     app.post("/api/auth/login", (req, res, next) => {
+      console.log("🔐 Login attempt for email:", req.body.email);
+      
       passport.authenticate('local', (err: any, user: any, info: any) => {
         if (err) {
+          console.error("❌ Passport authentication error:", err);
           return res.status(500).json({ message: "Authentication error" });
         }
         if (!user) {
+          console.log("❌ No user found, info:", info);
           return res.status(401).json({ message: info?.message || "Invalid credentials" });
         }
         
+        console.log("✅ User authenticated successfully:", user.id);
+        
         req.login(user, (err) => {
           if (err) {
+            console.error("❌ Login session error:", err);
             return res.status(500).json({ message: "Login failed" });
           }
           res.json({ user: { ...user, password: undefined } });

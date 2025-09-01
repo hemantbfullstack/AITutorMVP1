@@ -236,7 +236,7 @@ router.get("/users/stats", async (req, res) => {
         db
           .select({ count: count() })
           .from(users)
-          .where(sql`${users.planId} IN ('monthly', 'annual')`),
+          .where(sql`${users.planId} IN ('basic', 'standard', 'pro', 'institution')`),
       ]);
 
     const roleDistribution = await db
@@ -292,7 +292,8 @@ router.patch("/users/:id/plan", async (req, res) => {
     const { id } = req.params;
     const { planId } = req.body;
 
-    if (!["free", "hourly", "monthly", "annual"].includes(planId)) {
+    // Updated to use new plan IDs
+    if (!["free", "basic", "standard", "pro", "institution"].includes(planId)) {
       return res.status(400).json({ error: "Invalid plan" });
     }
 

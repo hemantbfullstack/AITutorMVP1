@@ -26,3 +26,34 @@ export const getTimeUntilReset = (resetDate: string | null): string => {
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 };
+
+// New utility functions for enhanced plan features
+export const canGenerateImages = (planId: string): boolean => {
+  const plan = getPlanById(planId);
+  return plan?.includesImages || false;
+};
+
+export const canUseVoice = (planId: string): boolean => {
+  const plan = getPlanById(planId);
+  return plan?.includesVoice || false;
+};
+
+export const getImageLimit = (planId: string): number | null => {
+  const plan = getPlanById(planId);
+  return plan?.imageLimit || null;
+};
+
+export const getGroupAccessLimit = (planId: string): number | null => {
+  const plan = getPlanById(planId);
+  return plan?.groupAccess || null;
+};
+
+export const hasPrioritySupport = (planId: string): boolean => {
+  const plan = getPlanById(planId);
+  return plan?.prioritySupport || false;
+};
+
+export const getPaperGenerationLimit = (planId: string): number | null => {
+  const plan = getPlanById(planId);
+  return plan?.paperGeneration || null;
+};

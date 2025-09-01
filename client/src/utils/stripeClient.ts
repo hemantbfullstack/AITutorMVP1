@@ -10,6 +10,7 @@ export interface StripePlan {
   stripePriceId?: string;
   popular?: boolean;
   badge?: string;
+  imageLimit?: number; // null means unlimited
 }
 
 export interface CreateCheckoutSessionRequest {

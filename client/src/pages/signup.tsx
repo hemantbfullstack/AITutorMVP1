@@ -21,7 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
 import { localSignupSchema, type LocalSignup } from "@shared/schema";
 
 export default function Signup() {

@@ -251,6 +251,39 @@ const UserManagementComponent: React.FC = () => {
     }
   };
 
+  // Update the plan display logic
+  const getPlanDisplayName = (planId: string) => {
+    switch (planId) {
+      case "free":
+        return "Free";
+      case "basic":
+        return "Basic";
+      case "standard":
+        return "Standard";
+      case "pro":
+        return "Pro";
+      case "institution":
+        return "Institution";
+      default:
+        return planId;
+    }
+  };
+
+  // Update the plan upgrade logic
+  const handlePlanUpgrade = (userId: string, currentPlan: string) => {
+    const planUpgrades = {
+      free: "basic",
+      basic: "standard",
+      standard: "pro",
+      pro: "institution"
+    };
+    
+    const nextPlan = planUpgrades[currentPlan as keyof typeof planUpgrades];
+    if (nextPlan) {
+      handlePlanChange(userId, nextPlan);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (

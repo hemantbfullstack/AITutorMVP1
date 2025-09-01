@@ -39,7 +39,11 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),   
   planId: varchar("plan_id").default("free").notNull(),
   usageCount: integer("usage_count").default(0).notNull(),
-  usageResetAt: timestamp("usage_reset_at"), 
+  usageResetAt: timestamp("usage_reset_at"),
+  // New fields for enhanced plan features
+  imageUsageCount: integer("image_usage_count").default(0).notNull(),
+  voiceUsageCount: integer("voice_usage_count").default(0).notNull(),
+  paperUsageCount: integer("paper_usage_count").default(0).notNull(),
 });
 
 // Add role enum type

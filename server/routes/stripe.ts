@@ -1,5 +1,6 @@
 import { plans } from "@shared/constants";
 import express, { Request, Response } from "express";
+import Stripe from "stripe";
 
 const router = express.Router();
 
@@ -41,10 +42,11 @@ router.post("/sync-plans", async (req: Request, res: Response) => {
   
   try {
     const updatedPlans: typeof plans = [];
+    const allPlans = [...plans];
 
-    for (const plan of plans) {
-      // Skip free/lifetime (Stripe doesn't handle $0 recurring plans well)
-      if (plan.price === 0 || plan.interval === "lifetime") {
+    for (const plan of allPlans) {
+      // Skip free plans (Stripe doesn't handle $0 recurring plans well)
+      if (plan.price === 0) {
         updatedPlans.push(plan);
         continue;
       }
@@ -56,15 +58,27 @@ router.post("/sync-plans", async (req: Request, res: Response) => {
         const product = await stripe.products.create({
           name: plan.name,
           description: plan.description,
+          metadata: {
+            planId: plan.id,
+            includesImages: plan.includesImages ? "true" : "false",
+            includesVoice: plan.includesVoice ? "true" : "false",
+            imageLimit: plan.imageLimit?.toString() || "unlimited",
+            groupAccess: plan.groupAccess?.toString() || "1",
+            prioritySupport: plan.prioritySupport ? "true" : "false",
+            paperGeneration: plan.paperGeneration?.toString() || "0"
+          }
         });
 
         const price = await stripe.prices.create({
-          unit_amount: plan.price * 100, // cents
+          unit_amount: plan.price * 100, // paise (INR cents)
           currency: plan.currency.toLowerCase(),
           recurring: {
             interval: convertIntervalToStripe(plan.interval),
           },
           product: product.id,
+          metadata: {
+            planId: plan.id
+          }
         });
 
         stripePriceId = price.id;
@@ -92,17 +106,19 @@ router.get("/plans", async (req: Request, res: Response) => {
   }
   
   try {
+    const allPlans = [...plans];
+    
     // First, let's check if we need to sync plans
-    const needsSync = plans.some(plan => 
-      plan.price > 0 && plan.interval !== "lifetime" && !plan.stripePriceId
+    const needsSync = allPlans.some(plan => 
+      plan.price > 0 && !plan.stripePriceId
     );
 
     if (needsSync) {
       // Auto-sync plans if they don't have stripePriceId
-      const updatedPlans: typeof plans = [];
+      const updatedPlans: typeof allPlans = [];
 
-      for (const plan of plans) {
-        if (plan.price === 0 || plan.interval === "lifetime") {
+      for (const plan of allPlans) {
+        if (plan.price === 0) {
           updatedPlans.push(plan);
           continue;
         }
@@ -114,6 +130,15 @@ router.get("/plans", async (req: Request, res: Response) => {
             const product = await stripe.products.create({
               name: plan.name,
               description: plan.description,
+              metadata: {
+                planId: plan.id,
+                includesImages: plan.includesImages ? "true" : "false",
+                includesVoice: plan.includesVoice ? "true" : "false",
+                imageLimit: plan.imageLimit?.toString() || "unlimited",
+                groupAccess: plan.groupAccess?.toString() || "1",
+                prioritySupport: plan.prioritySupport ? "true" : "false",
+                paperGeneration: plan.paperGeneration?.toString() || "0"
+              }
             });
 
             const price = await stripe.prices.create({
@@ -123,6 +148,9 @@ router.get("/plans", async (req: Request, res: Response) => {
                 interval: convertIntervalToStripe(plan.interval),
               },
               product: product.id,
+              metadata: {
+                planId: plan.id
+              }
             });
 
             stripePriceId = price.id;
@@ -138,7 +166,7 @@ router.get("/plans", async (req: Request, res: Response) => {
       res.json({ success: true, plans: updatedPlans });
     } else {
       // Return existing plans if they already have stripePriceId
-      res.json({ success: true, plans });
+      res.json({ success: true, plans: allPlans });
     }
   } catch (error: any) {
     console.error("Get plans error:", error);
