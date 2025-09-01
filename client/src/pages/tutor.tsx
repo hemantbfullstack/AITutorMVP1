@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import ChatArea from "@/components/chat/ChatArea";
 import MathToolsSidebar from "@/components/tools/MathToolsSidebar";
-import Navbar from "@/components/ui/navbar";
 import { UIAction } from "@/lib/intentDetector";
 import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -83,9 +81,7 @@ export default function Tutor() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      
+      <div className="min-h-screen bg-slate-50">      
       <div className="pt-16 min-h-screen flex">
         {/* Main Chat Area */}
         <div className={`flex-1 flex flex-col ${mainContentMargin}`}>

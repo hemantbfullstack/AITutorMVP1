@@ -1,30 +1,22 @@
 import React from 'react';
-import Navbar from '../ui/navbar';
+import Header from './Header';
 import Footer from './footer';
-
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  showNavbar?: boolean;
-  showFooter?: boolean;
   className?: string;
 }
 
-export default function MainLayout({ 
-  children, 
-  showNavbar = true, 
-  showFooter = true,
-  className = ""
-}: MainLayoutProps) {
+export default function MainLayout({ children, className = "" }: MainLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
-      {showNavbar && <Navbar />}
+      <Header />
       
-      <main className={`flex-1 ${showNavbar ? 'pt-16' : ''} ${className}`}>
+      <main className={`flex-1 ${className}`}>
         {children}
       </main>
       
-      {showFooter && <Footer />}
+      <Footer />
     </div>
   );
 }

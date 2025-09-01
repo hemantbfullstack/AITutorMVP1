@@ -17,7 +17,6 @@ import {
   User,
   GraduationCap
 } from 'lucide-react';
-import { AdminLayout } from './AdminLayout';
 import { User as UserSchema } from '@shared/schema';
 
 interface UserWithStats extends UserSchema {
@@ -222,7 +221,6 @@ export const UserManagement: React.FC = () => {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <AdminLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">User Management</h1>
@@ -506,6 +504,5 @@ export const UserManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </AdminLayout>
   );
 };

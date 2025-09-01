@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { UserManagement } from './UserManagement';
-import { AdminLayout } from './AdminLayout';
 
 export const AdminDashboard: React.FC = () => {
   return (
-    <AdminLayout>
+   
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         
@@ -49,6 +47,6 @@ export const AdminDashboard: React.FC = () => {
 
         
       </div>
-    </AdminLayout>
+   
   );
 };

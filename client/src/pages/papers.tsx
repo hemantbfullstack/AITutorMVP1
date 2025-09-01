@@ -11,7 +11,6 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { FileDown, Timer, Eye, BookOpen, Calculator, BarChart3 } from "lucide-react";
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
-import Navbar from "@/components/ui/navbar";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -223,8 +222,7 @@ export default function Papers() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="min-h-screen bg-gray-50">    
       
       <div className="pt-20 pb-8 px-4">
         <div className="max-w-7xl mx-auto">
