@@ -82,7 +82,6 @@ router.post("/sync-plans", async (req: Request, res: Response) => {
         });
 
         stripePriceId = price.id;
-        console.log(`Created Stripe price for ${plan.name}: ${stripePriceId}`);
       }
 
       // Merge stripePriceId into plan
@@ -154,7 +153,6 @@ router.get("/plans", async (req: Request, res: Response) => {
             });
 
             stripePriceId = price.id;
-            console.log(`Auto-created Stripe price for ${plan.name}: ${stripePriceId}`);
           } catch (error) {
             console.error(`Failed to create Stripe price for ${plan.name}:`, error);
           }
@@ -251,11 +249,9 @@ router.post("/webhook", express.raw({ type: "application/json" }), (req: any, re
   switch (event.type) {
     case "checkout.session.completed":
       const session = event.data.object as Stripe.Checkout.Session;
-      console.log("✅ Payment succeeded for session:", session.id);
       // TODO: Mark user subscription active in DB
       break;
     case "invoice.payment_failed":
-      console.log("❌ Payment failed:", event.data.object);
       // TODO: Handle subscription failed
       break;
     default:

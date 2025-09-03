@@ -19,11 +19,6 @@ router.use(requireAdmin as any);
 router.get("/users", async (req, res) => {
   try {
     const startTime = Date.now();
-
-    // Log pool status before query
-    const poolStatusBefore = getPoolStatus();
-    console.log(" Pool status before query:", poolStatusBefore);
-
     const {
       page = 1,
       limit = 10,
@@ -108,7 +103,6 @@ router.get("/users", async (req, res) => {
       .offset(offset);
 
     const queryTime = Date.now() - queryStart;
-    console.log(`📊 Users query took ${queryTime}ms`);
 
     // PHASE 2: OPTIMIZED stats queries - Use EXISTS instead of COUNT
     const statsStart = Date.now();
@@ -161,7 +155,6 @@ router.get("/users", async (req, res) => {
     }
 
     const statsTime = Date.now() - statsStart;
-    console.log(` Stats queries took ${statsTime}ms`);
 
     // PHASE 3: Get total count and filter options
     const metaStart = Date.now();
@@ -173,22 +166,10 @@ router.get("/users", async (req, res) => {
 
     const totalCount = totalCountResult[0].count;
     const metaTime = Date.now() - metaStart;
-    console.log(`🔍 Meta queries took ${metaTime}ms`);
-
-    const totalDuration = Date.now() - startTime;
-
-    // Log detailed performance breakdown
-    console.log(`⏱️ Performance Breakdown:
-      - Users query: ${queryTime}ms
-      - Stats queries: ${statsTime}ms  
-      - Meta queries: ${metaTime}ms
-      - Total API time: ${totalDuration}ms
-    `);
+    const totalDuration = Date.now() - startTime; 
 
     // Log pool status after query
     const poolStatusAfter = getPoolStatus();
-    console.log("🔍 Pool status after query:", poolStatusAfter);
-
     res.json({
       users: usersWithStats,
       duration: totalDuration,

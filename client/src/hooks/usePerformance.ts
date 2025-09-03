@@ -7,19 +7,7 @@ export function usePerformance(componentName: string) {
   useEffect(() => {
     renderCount.current += 1;
     const currentTime = performance.now();
-    const timeSinceLastRender = currentTime - lastRenderTime.current;
-
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `[Performance] ${componentName} rendered ${renderCount.current} times`
-      );
-      console.log(
-        `[Performance] Time since last render: ${timeSinceLastRender.toFixed(
-          2
-        )}ms`
-      );
-    }
-
+    const timeSinceLastRender = currentTime - lastRenderTime.current;   
     lastRenderTime.current = currentTime;
   });
 

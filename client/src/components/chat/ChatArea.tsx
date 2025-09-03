@@ -91,8 +91,6 @@ export default function ChatArea({
     return storeUser.usageCount >= plan.limit;
   };
 
-  console.log("ChatArea: user from store:", storeUser); // Debug log
-  console.log("ChatArea: isUsageLimitReached:", isUsageLimitReached()); // Debug log
 
   // Load voice preference from localStorage
   useEffect(() => {
@@ -193,12 +191,6 @@ export default function ChatArea({
       setShouldAutoScroll(true);
     }
   }, [messages.length]);
-
-  // Debug logging for message changes
-  useEffect(() => {
-    console.log("Messages state updated:", messages.length, "messages");
-    console.log("Current session ID:", currentSessionId);
-  }, [messages, currentSessionId]);
 
   // Listen for sendToChat events from tools
   useEffect(() => {
@@ -492,12 +484,9 @@ export default function ChatArea({
 
     // Check for plot commands and render inline image
     const plotQuery = parsePlotQuery(message);
-    console.log("handleSendMessage plotQuery check:", { message, plotQuery });
     if (plotQuery) {
       try {
-        console.log("Fetching Wolfram image for:", plotQuery);
         const imageBase64 = await fetchWolframImage(plotQuery);
-        console.log("Got image data:", imageBase64.substring(0, 50) + "...");
         const plotMessage: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
@@ -506,7 +495,6 @@ export default function ChatArea({
           createdAt: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, plotMessage]);
-        console.log("Added plot message to chat");
 
         // Send to AI for explanation after a small delay to ensure plot message is rendered
         setTimeout(() => {

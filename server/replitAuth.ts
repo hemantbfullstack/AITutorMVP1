@@ -223,19 +223,15 @@ export async function setupAuth(app: Express) {
     });
 
     app.post("/api/auth/login", (req, res, next) => {
-      console.log("🔐 Login attempt for email:", req.body.email);
       
       passport.authenticate('local', (err: any, user: any, info: any) => {
         if (err) {
-          console.error("❌ Passport authentication error:", err);
           return res.status(500).json({ message: "Authentication error" });
         }
         if (!user) {
-          console.log("❌ No user found, info:", info);
           return res.status(401).json({ message: info?.message || "Invalid credentials" });
         }
         
-        console.log("✅ User authenticated successfully:", user.id);
         
         req.login(user, (err) => {
           if (err) {

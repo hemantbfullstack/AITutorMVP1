@@ -3,6 +3,7 @@ import { Switch, Route } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/components/layout/mainLayout";
+import TutorCostCalculator from "@/components/CostCalculator/costings";
 
 // Lazy load heavy pages
 const Landing = lazy(() => import("@/pages/landing"));
@@ -157,6 +158,9 @@ export default function AppRouter() {
       <Route path="/pricing" component={PublicPricing} />
       <Route path="/success" component={PublicSuccess} />
       <Route path="/cancel" component={PublicCancel} />
+      <Route path="/tutorCostings" component={TutorCostCalculator} />
+
+      
 
       {/* Protected routes - require authentication */}
       <Route path="/tutor" component={ProtectedTutor} />

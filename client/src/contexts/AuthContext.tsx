@@ -23,9 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user, isLoading } = useQuery({
     queryKey: ["auth", "user"],
     queryFn: async () => {
-      console.log("[AuthContext] Fetching user data...");
       const result = await authService.getCurrentUser();
-      console.log("[AuthContext] User data fetched successfully");
       return result;
     },
     retry: false,

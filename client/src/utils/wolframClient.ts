@@ -19,6 +19,5 @@ export function parsePlotQuery(text: string): string | null {
   // Match "Plot y = ..." pattern (case-insensitive)
   const match = normalizedText.match(/^(?:plot|graph)\s+(.+)/i);
   const result = match ? `plot ${match[1]}` : null;
-  console.log("parsePlotQuery:", { text, normalizedText, match: !!match, result });
   return result;
 }

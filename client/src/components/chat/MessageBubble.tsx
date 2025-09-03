@@ -25,10 +25,6 @@ export default function MessageBubble({
   isStreaming,
   selectedVoiceId
 }: MessageBubbleProps) {
-  // Debug logging
-  if (image) {
-    console.log("MessageBubble rendering with image:", image.substring(0, 50) + "...");
-  }
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,10 +35,6 @@ export default function MessageBubble({
   const cacheKey = useMemo(() => {
     return `${selectedVoiceId}-${content.substring(0, 100)}`; // First 100 chars for cache key
   }, [selectedVoiceId, content]);
-
-
-
-
 
   // Reset audio when voice changes
   useEffect(() => {
