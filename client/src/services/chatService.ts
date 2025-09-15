@@ -1,11 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-const chatApi = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
-  withCredentials: true,
-});
+import apiClient from '@/utils/apiClient';
 
 export interface ChatMessage {
   id: string;
@@ -25,21 +18,21 @@ export interface ChatSession {
 
 export const chatService = {
   async sendMessage(sessionId: string, message: string): Promise<ChatMessage> {
-    const response = await chatApi.post(`/chat/${sessionId}/messages`, { message });
+    const response = await apiClient.post(`/chat/${sessionId}/messages`, { message });
     return response.data;
   },
 
   async getChatSessions(): Promise<ChatSession[]> {
-    const response = await chatApi.get('/chat/sessions');
+    const response = await apiClient.get('/chat/sessions');
     return response.data;
   },
 
   async createChatSession(title?: string): Promise<ChatSession> {
-    const response = await chatApi.post('/chat/sessions', { title });
+    const response = await apiClient.post('/chat/sessions', { title });
     return response.data;
   },
 
   async deleteChatSession(sessionId: string): Promise<void> {
-    await chatApi.delete(`/chat/sessions/${sessionId}`);
+    await apiClient.delete(`/chat/sessions/${sessionId}`);
   }
 };

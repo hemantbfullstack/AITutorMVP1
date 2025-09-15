@@ -132,7 +132,9 @@ export default function Papers() {
     queryKey: ["/api/papers"],
     queryFn: async () => {
       const response = await fetch("/api/papers", {
-        credentials: "include",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
+        },
       });
       if (!response.ok) {
         throw new Error("Failed to fetch papers");
@@ -201,9 +203,9 @@ export default function Papers() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify({ type }),
-        credentials: "include",
       });
 
       if (!response.ok) {

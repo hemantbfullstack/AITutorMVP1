@@ -28,6 +28,15 @@ ELEVENLABS_MODEL=eleven_multilingual_v2
 # Optional: Wolfram Alpha API Key for advanced math queries  
 # WOLFRAM_APP_ID=your_wolfram_app_id_here
 
+# Optional: Pinecone API Key for vector database (required for knowledge base functionality)
+# PINECONE_API_KEY=your_pinecone_api_key_here
+# PINECONE_INDEX_NAME=aitutor-index
+# Note: PINECONE_ENVIRONMENT is not needed for Pinecone v1
+
+# Optional: File upload settings
+# MAX_FILE_SIZE=10485760
+# UPLOAD_PATH=./uploads
+
 # DO NOT ADD THESE FOR LOCAL DEVELOPMENT:
 # REPLIT_DOMAINS (only for Replit environment)
 # REPL_ID (only for Replit environment)
@@ -42,8 +51,9 @@ export PORT=5000
 ## Getting API Keys
 
 1. **OpenAI API Key**: Visit [OpenAI Platform](https://platform.openai.com/api-keys) to generate your API key
-2. **ElevenLabs API Key** (optional): Visit [ElevenLabs](https://elevenlabs.io) for text-to-speech
-3. **Wolfram Alpha API** (optional): Visit [Wolfram Alpha API](https://developer.wolframalpha.com/) for advanced math
+2. **Pinecone API Key** (optional): Visit [Pinecone](https://www.pinecone.io/) for vector database functionality
+3. **ElevenLabs API Key** (optional): Visit [ElevenLabs](https://elevenlabs.io) for text-to-speech
+4. **Wolfram Alpha API** (optional): Visit [Wolfram Alpha API](https://developer.wolframalpha.com/) for advanced math
 
 ## Running Locally
 

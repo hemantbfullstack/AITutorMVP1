@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { authService } from "@/services/authService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +23,16 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { localSignupSchema, type LocalSignup } from "@shared/schema";
+import { z } from "zod";
+// Local signup schema
+const localSignupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+type LocalSignup = z.infer<typeof localSignupSchema>;
 
 export default function Signup() {
   const [, setLocation] = useLocation();
@@ -40,24 +50,17 @@ export default function Signup() {
 
   const signupMutation = useMutation({
     mutationFn: async (data: LocalSignup) => {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || "Signup failed");
-      }
-
-      const result = await response.json();
-      return result;
+      return await authService.signup(data);
     },
     onSuccess: async (data) => {
+      console.log('Signup successful, data:', data);
+      // Trigger a custom event to notify AuthContext of token change
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'auth_token',
+        newValue: localStorage.getItem('auth_token'),
+        oldValue: null
+      }));
+      
       // Invalidate and refetch user data to update authentication state
       queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
       await queryClient.refetchQueries({ queryKey: ["auth", "user"] });

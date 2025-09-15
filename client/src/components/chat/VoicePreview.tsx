@@ -30,8 +30,8 @@ export default function VoicePreview({ voiceId, tutorName, className }: VoicePre
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
           },
-          credentials: "include",
           body: JSON.stringify({ 
             text: previewText,
             voice: voiceId, // This should now be "alloy", "echo", etc.

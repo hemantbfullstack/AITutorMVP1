@@ -1,12 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { User } from "@shared/schema";
-
-export interface AuthenticatedRequest extends Request {
-  user?: User;
-}
 
 export const requireRole = (allowedRoles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: "Authentication required" });
     }

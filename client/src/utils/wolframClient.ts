@@ -1,17 +1,10 @@
+import apiClient from './apiClient';
+
 export async function fetchWolframImage(query: string): Promise<string> {
-  const response = await fetch("/api/wolfram/simple", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
-  });
-  
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || "Wolfram failed");
-  }
+  const response = await apiClient.post("/wolfram/simple", { query });
   
   // The server returns imageBase64 with data:image/png;base64, prefix
-  return data.imageBase64;
+  return response.data.imageBase64;
 }
 
 export function parsePlotQuery(text: string): string | null {

@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
 import { Crown, AlertCircle } from 'lucide-react';
 
 interface MessageInputProps {
@@ -13,22 +11,7 @@ interface MessageInputProps {
 
 export default function MessageInput({ onSendMessage, disabled, sessionId }: MessageInputProps) {
   const [message, setMessage] = useState("");
-  const [autoPlayVoice, setAutoPlayVoice] = useState(false);
-  const [volume, setVolume] = useState(0.7);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Load preferences from localStorage
-  useEffect(() => {
-    const savedAutoPlay = localStorage.getItem('autoPlayVoice');
-    if (savedAutoPlay !== null) {
-      setAutoPlayVoice(savedAutoPlay === 'true');
-    }
-
-    const savedVolume = localStorage.getItem('volume');
-    if (savedVolume !== null) {
-      setVolume(parseFloat(savedVolume));
-    }
-  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -52,16 +35,6 @@ export default function MessageInput({ onSendMessage, disabled, sessionId }: Mes
     }
   };
 
-  const handleAutoPlayChange = (checked: boolean) => {
-    setAutoPlayVoice(checked);
-    localStorage.setItem('autoPlayVoice', checked.toString());
-  };
-
-  const handleVolumeChange = (value: number[]) => {
-    const newVolume = value[0];
-    setVolume(newVolume);
-    localStorage.setItem('volume', newVolume.toString());
-  };
 
   const charCount = message.length;
   const maxChars = 4000;
@@ -118,39 +91,14 @@ export default function MessageInput({ onSendMessage, disabled, sessionId }: Mes
         </Button>
       </div>
 
-      {/* Voice Controls */}
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex items-center space-x-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="auto-play-voice"
-              checked={autoPlayVoice}
-              onCheckedChange={handleAutoPlayChange}
-              data-testid="checkbox-autoplay"
-            />
-            <label htmlFor="auto-play-voice" className="text-slate-600 cursor-pointer">
-              Auto-play tutor voice
-            </label>
-          </div>
-          <div className="flex items-center space-x-2 text-slate-600">
-            <i className="fas fa-volume-up"></i>
-            <Slider
-              value={[volume]}
-              onValueChange={handleVolumeChange}
-              max={1}
-              min={0}
-              step={0.1}
-              className="w-16"
-              data-testid="slider-volume"
-            />
-          </div>
-        </div>
-        {sessionId && (
+      {/* Session ID */}
+      {sessionId && (
+        <div className="mt-3 text-center">
           <div className="text-xs text-slate-500">
             Session: <span data-testid="text-session-id">{sessionId.slice(0, 8)}...</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

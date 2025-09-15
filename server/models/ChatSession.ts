@@ -1,0 +1,60 @@
+import mongoose from 'mongoose';
+
+const MessageSchema = new mongoose.Schema({
+  role: {
+    type: String,
+    enum: ['user', 'assistant'],
+    required: true
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  isVoice: {
+    type: Boolean,
+    default: false
+  },
+  metadata: {
+    knowledgeBase: String,
+    tokensUsed: Number,
+    responseTime: Number
+  }
+});
+
+const ChatSessionSchema = new mongoose.Schema({
+  sessionId: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  knowledgeBaseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'KnowledgeBase',
+    required: true
+  },
+  messages: [MessageSchema],
+  totalTokensUsed: {
+    type: Number,
+    default: 0
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastActivity: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Update lastActivity before saving
+ChatSessionSchema.pre('save', function(next) {
+  this.lastActivity = new Date();
+  next();
+});
+
+export default mongoose.model('ChatSession', ChatSessionSchema);

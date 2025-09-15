@@ -1,0 +1,120 @@
+%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+/Resources <<
+  /Font <<
+    /F1 5 0 R
+  >>
+>>
+>>
+endobj
+
+4 0 obj
+<<
+/Length 200
+>>
+stream
+BT
+/F1 12 Tf
+50 750 Td
+(Mathematics: Quadratic Functions and Graphs) Tj
+0 -20 Td
+/F1 10 Tf
+(Introduction to Quadratic Functions) Tj
+0 -15 Td
+(A quadratic function is a polynomial function of degree 2.) Tj
+0 -15 Td
+(The general form is: f(x) = ax² + bx + c) Tj
+0 -15 Td
+(Where a, b, and c are constants, and a ≠ 0.) Tj
+0 -30 Td
+(Key Features of Quadratic Functions:) Tj
+0 -15 Td
+(1. Vertex: The highest or lowest point on the parabola) Tj
+0 -15 Td
+(2. Axis of Symmetry: A vertical line that divides the parabola) Tj
+0 -15 Td
+(3. Roots/Zeros: The x-intercepts where function equals zero) Tj
+0 -15 Td
+(4. Y-intercept: The point where graph crosses y-axis) Tj
+0 -30 Td
+(Solving Quadratic Equations:) Tj
+0 -15 Td
+(1. Factoring: Express as product of two binomials) Tj
+0 -15 Td
+(2. Quadratic Formula: x = (-b ± √(b² - 4ac)) / 2a) Tj
+0 -15 Td
+(3. Completing the Square: Transform to perfect square form) Tj
+0 -15 Td
+(4. Graphing: Find x-intercepts on the graph) Tj
+0 -30 Td
+(Real-World Applications:) Tj
+0 -15 Td
+(1. Projectile Motion: Path of thrown object follows parabola) Tj
+0 -15 Td
+(2. Optimization: Finding max/min values in business) Tj
+0 -15 Td
+(3. Architecture: Designing arches and bridges) Tj
+0 -15 Td
+(4. Economics: Modeling profit and cost functions) Tj
+0 -30 Td
+(IMPORTANT: This PDF contains visual diagrams and graphs) Tj
+0 -15 Td
+(that are essential for understanding quadratic functions.) Tj
+0 -15 Td
+(The graphs show the parabolic shape, vertex points,) Tj
+0 -15 Td
+(roots, and real-world applications like projectile motion.) Tj
+0 -30 Td
+(Visual Content: This document includes mathematical graphs) Tj
+0 -15 Td
+(and diagrams that help illustrate the concepts.) Tj
+0 -15 Td
+(These visual aids are crucial for understanding the material.) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000274 00000 n 
+0000000526 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+625
+%%EOF

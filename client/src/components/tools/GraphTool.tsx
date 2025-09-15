@@ -58,7 +58,10 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
     mutationFn: async (query: string) => {
       const response = await fetch("/api/wolfram/simple", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
+        },
         body: JSON.stringify({ query }),
       });
       
@@ -106,7 +109,10 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
     mutationFn: async (query: string) => {
       const response = await fetch("/api/wolfram/full", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
+        },
         body: JSON.stringify({ query }),
       });
       

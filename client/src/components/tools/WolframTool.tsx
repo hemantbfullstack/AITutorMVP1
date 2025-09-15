@@ -30,7 +30,10 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
     mutationFn: async (query: string) => {
       const response = await fetch("/api/tools/wolfram", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
+        },
         body: JSON.stringify({ query }),
       });
       return await response.json();

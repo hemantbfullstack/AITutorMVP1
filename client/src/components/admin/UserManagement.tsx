@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from "react";
+import React, { useState, useEffect, useCallback, memo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,30 +23,19 @@ import {
   User,
   GraduationCap,
 } from "lucide-react";
-import { User as UserSchema } from "@shared/schema";
-
-interface UserWithStats extends UserSchema {
-  stats: {
-    sessions: number;
-    messages: number;
-    papers: number;
-  };
-}
-
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
-interface FilterOptions {
-  roles: string[];
-  plans: string[];
-  statuses: string[];
-}
+import { 
+  adminService, 
+  type UserSchema, 
+  type UserWithStats, 
+  type PaginationInfo, 
+  type FilterOptions 
+} from "@/services/adminService";
+import {
+  RoleChangeConfirmation,
+  PlanChangeConfirmation,
+  UsageResetConfirmation,
+  DeleteUserConfirmation,
+} from "@/components/ui/confirmation-dialog";
 
 // Custom debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -90,17 +79,46 @@ const UserManagementComponent: React.FC = () => {
     statuses: [],
   });
 
-  const debouncedSearch = useDebounce(filters.search, 500);
+  // Confirmation dialog states
+  const [roleChangeDialog, setRoleChangeDialog] = useState<{
+    open: boolean;
+    userId: string;
+    newRole: string;
+    userName: string;
+  }>({ open: false, userId: '', newRole: '', userName: '' });
 
-  // Watch for changes in filters and debounced search
+  const [planChangeDialog, setPlanChangeDialog] = useState<{
+    open: boolean;
+    userId: string;
+    newPlan: string;
+    userName: string;
+  }>({ open: false, userId: '', newPlan: '', userName: '' });
+
+  const [usageResetDialog, setUsageResetDialog] = useState<{
+    open: boolean;
+    userId: string;
+    userName: string;
+  }>({ open: false, userId: '', userName: '' });
+
+  const [deleteUserDialog, setDeleteUserDialog] = useState<{
+    open: boolean;
+    userId: string;
+    userName: string;
+  }>({ open: false, userId: '', userName: '' });
+
+  const debouncedSearch = useDebounce(filters.search, 500);
+  const isInitialRender = useRef(true);
+
+  // Initial load
   useEffect(() => {
-    // Skip the initial load (when debouncedSearch is empty and filters are default)
-    if (
-      debouncedSearch !== filters.search ||
-      filters.role !== "all" ||
-      filters.plan !== "all" ||
-      filters.status !== "all"
-    ) {
+    fetchUsers();
+    isInitialRender.current = false;
+  }, []);
+
+  // Handle search, filter and sort changes
+  useEffect(() => {
+    // Skip the very first render, but fetch on all subsequent changes
+    if (!isInitialRender.current) {
       fetchUsers();
     }
   }, [
@@ -112,18 +130,13 @@ const UserManagementComponent: React.FC = () => {
     filters.sortOrder,
   ]);
 
-  // Initial load
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-        search: debouncedSearch, // Use debounced search value
+      const data = await adminService.getUsers({
+        page: pagination.page,
+        limit: pagination.limit,
+        search: debouncedSearch,
         role: filters.role,
         plan: filters.plan,
         status: filters.status,
@@ -131,99 +144,129 @@ const UserManagementComponent: React.FC = () => {
         sortOrder: filters.sortOrder,
       });
 
-      const response = await fetch(`/api/admin/users?${params}`);
-      const data = await response.json();
-
       setUsers(data.users);
       setPagination(data.pagination);
-      setFilterOptions(data.filters);
+      setFilterOptions(data.filters || { roles: [], plans: [], statuses: [] });
     } catch (error) {
       console.error("Failed to fetch users:", error);
     } finally {
       setLoading(false);
     }
   }, [
+    pagination.page,
+    pagination.limit,
     debouncedSearch,
     filters.role,
     filters.plan,
     filters.status,
     filters.sortBy,
     filters.sortOrder,
-    pagination.page,
-    pagination.limit,
   ]);
 
-  const updateUserRole = async (userId: string, newRole: string) => {
-    try {
-      await fetch(`/api/admin/users/${userId}/role`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: newRole }),
-      });
+  const updateUserRole = useCallback((userId: string, newRole: string) => {
+    // Find the user to get their name for the confirmation
+    const user = users.find(u => u._id === userId);
+    const userName = user ? `${user.firstName} ${user.lastName}` : 'this user';
+    
+    setRoleChangeDialog({
+      open: true,
+      userId,
+      newRole,
+      userName,
+    });
+  }, [users]);
 
+  const handleRoleChangeConfirm = useCallback(async () => {
+    try {
+      await adminService.updateUserRole(roleChangeDialog.userId, { role: roleChangeDialog.newRole });
       fetchUsers();
     } catch (error) {
       console.error("Failed to update user role:", error);
     }
-  };
+  }, [roleChangeDialog.userId, roleChangeDialog.newRole, fetchUsers]);
 
-  const updateUserPlan = async (userId: string, newPlan: string) => {
+  const updateUserPlan = useCallback((userId: string, newPlan: string) => {
+    // Find the user to get their name for the confirmation
+    const user = users.find(u => u._id === userId);
+    const userName = user ? `${user.firstName} ${user.lastName}` : 'this user';
+    
+    setPlanChangeDialog({
+      open: true,
+      userId,
+      newPlan,
+      userName,
+    });
+  }, [users]);
+
+  const handlePlanChangeConfirm = useCallback(async () => {
     try {
-      await fetch(`/api/admin/users/${userId}/plan`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: newPlan }),
-      });
-
+      await adminService.updateUserPlan(planChangeDialog.userId, { planId: planChangeDialog.newPlan });
       fetchUsers();
     } catch (error) {
       console.error("Failed to update user plan:", error);
     }
-  };
+  }, [planChangeDialog.userId, planChangeDialog.newPlan, fetchUsers]);
 
-  const resetUserUsage = async (userId: string) => {
+  const resetUserUsage = useCallback((userId: string) => {
+    // Find the user to get their name for the confirmation
+    const user = users.find(u => u._id === userId);
+    const userName = user ? `${user.firstName} ${user.lastName}` : 'this user';
+    
+    setUsageResetDialog({
+      open: true,
+      userId,
+      userName,
+    });
+  }, [users]);
+
+  const handleUsageResetConfirm = useCallback(async () => {
     try {
-      await fetch(`/api/admin/users/${userId}/reset-usage`, {
-        method: "PATCH",
-      });
-
+      await adminService.resetUserUsage(usageResetDialog.userId);
       fetchUsers();
     } catch (error) {
       console.error("Failed to reset user usage:", error);
     }
-  };
+  }, [usageResetDialog.userId, fetchUsers]);
 
-  const deleteUser = async (userId: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
+  const deleteUser = useCallback((userId: string) => {
+    // Find the user to get their name for the confirmation
+    const user = users.find(u => u._id === userId);
+    const userName = user ? `${user.firstName} ${user.lastName}` : 'this user';
+    
+    setDeleteUserDialog({
+      open: true,
+      userId,
+      userName,
+    });
+  }, [users]);
 
+  const handleDeleteUserConfirm = useCallback(async () => {
     try {
-      await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      await adminService.deleteUser(deleteUserDialog.userId);
       fetchUsers();
     } catch (error) {
       console.error("Failed to delete user:", error);
     }
-  };
+  }, [deleteUserDialog.userId, fetchUsers]);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback((value: string) => {
     setFilters((prev) => ({ ...prev, search: value }));
     setPagination((prev) => ({ ...prev, page: 1 }));
-    fetchUsers();
-  };
+    // Don't call fetchUsers here - let debounced search handle it
+  }, []);
 
-  const handleFilterChange = (key: string, value: string) => {
+  const handleFilterChange = useCallback((key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    setPagination((prev) => ({ ...prev, page: 1 })); // Reset to first page
-    // Fetch users immediately for filter changes
-    fetchUsers();
-  };
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    // Don't call fetchUsers here - let useEffect handle it
+  }, []);
 
-  const handleSort = (sortBy: string) => {
+  const handleSort = useCallback((sortBy: string) => {
     const newSortOrder =
       filters.sortBy === sortBy && filters.sortOrder === "asc" ? "desc" : "asc";
     setFilters((prev) => ({ ...prev, sortBy, sortOrder: newSortOrder }));
-    // Fetch users immediately for sort changes
-    fetchUsers();
-  };
+    // Don't call fetchUsers here - let useEffect handle it
+  }, [filters.sortBy, filters.sortOrder]);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -280,7 +323,7 @@ const UserManagementComponent: React.FC = () => {
     
     const nextPlan = planUpgrades[currentPlan as keyof typeof planUpgrades];
     if (nextPlan) {
-      handlePlanChange(userId, nextPlan);
+      updateUserPlan(userId, nextPlan);
     }
   };
 
@@ -488,7 +531,7 @@ const UserManagementComponent: React.FC = () => {
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user.id} className="border-b hover:bg-gray-50">
+                  <tr key={user._id} className="border-b hover:bg-gray-50">
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
@@ -500,7 +543,7 @@ const UserManagementComponent: React.FC = () => {
                             {user.firstName} {user.lastName}
                           </div>
                           <div className="text-sm text-gray-500">
-                            ID: {user.id.slice(0, 8)}...
+                            ID: {user._id.slice(0, 8)}...
                           </div>
                         </div>
                       </div>
@@ -525,11 +568,16 @@ const UserManagementComponent: React.FC = () => {
                           {user.usageCount} /{" "}
                           {user.planId === "free"
                             ? "5"
-                            : user.planId === "hourly"
+                            : user.planId === "basic"
                             ? "100"
-                            : user.planId === "monthly"
+                            : user.planId === "standard"
                             ? "200"
-                            : "2500"}
+                            : user.planId === "pro"
+                            ? "500"
+                            : "1000"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Images: {user.imageUsageCount} | Voice: {user.voiceUsageCount} | Papers: {user.paperUsageCount}
                         </div>
                         <div className="text-xs text-gray-500">
                           {user.usageResetAt
@@ -542,9 +590,9 @@ const UserManagementComponent: React.FC = () => {
                     </td>
                     <td className="p-3">
                       <div className="text-xs space-y-1">
-                        <div>📚 {user.stats.sessions} sessions</div>
-                        <div>💬 {user.stats.messages} messages</div>
-                        <div>�� {user.stats.papers} papers</div>
+                        <div>📚  sessions</div>
+                        <div>💬  messages</div>
+                        <div>��  papers</div>
                       </div>
                     </td>
                     <td className="p-3">
@@ -558,7 +606,7 @@ const UserManagementComponent: React.FC = () => {
                         <Select
                           value={user.role}
                           onValueChange={(value) =>
-                            updateUserRole(user.id, value)
+                            updateUserRole(user._id, value)
                           }
                         >
                           <SelectTrigger className="w-24">
@@ -575,7 +623,7 @@ const UserManagementComponent: React.FC = () => {
                         <Select
                           value={user.planId}
                           onValueChange={(value) =>
-                            updateUserPlan(user.id, value)
+                            updateUserPlan(user._id, value)
                           }
                         >
                           <SelectTrigger className="w-20">
@@ -583,9 +631,10 @@ const UserManagementComponent: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="free">Free</SelectItem>
-                            <SelectItem value="hourly">Hourly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="annual">Annual</SelectItem>
+                            <SelectItem value="basic">Basic</SelectItem>
+                            <SelectItem value="standard">Standard</SelectItem>
+                            <SelectItem value="pro">Pro</SelectItem>
+                            <SelectItem value="institution">Institution</SelectItem>
                           </SelectContent>
                         </Select>
 
@@ -593,7 +642,7 @@ const UserManagementComponent: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => resetUserUsage(user.id)}
+                          onClick={() => resetUserUsage(user._id)}
                           title="Reset usage count"
                         >
                           <RefreshCw className="h-4 w-4" />
@@ -603,7 +652,7 @@ const UserManagementComponent: React.FC = () => {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => deleteUser(user.id)}
+                          onClick={() => deleteUser(user._id)}
                           disabled={user.role === "admin"}
                           title="Delete user"
                         >
@@ -654,6 +703,37 @@ const UserManagementComponent: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialogs */}
+      <RoleChangeConfirmation
+        open={roleChangeDialog.open}
+        onOpenChange={(open) => setRoleChangeDialog(prev => ({ ...prev, open }))}
+        onConfirm={handleRoleChangeConfirm}
+        userName={roleChangeDialog.userName}
+        newRole={roleChangeDialog.newRole}
+      />
+
+      <PlanChangeConfirmation
+        open={planChangeDialog.open}
+        onOpenChange={(open) => setPlanChangeDialog(prev => ({ ...prev, open }))}
+        onConfirm={handlePlanChangeConfirm}
+        userName={planChangeDialog.userName}
+        newPlan={planChangeDialog.newPlan}
+      />
+
+      <UsageResetConfirmation
+        open={usageResetDialog.open}
+        onOpenChange={(open) => setUsageResetDialog(prev => ({ ...prev, open }))}
+        onConfirm={handleUsageResetConfirm}
+        userName={usageResetDialog.userName}
+      />
+
+      <DeleteUserConfirmation
+        open={deleteUserDialog.open}
+        onOpenChange={(open) => setDeleteUserDialog(prev => ({ ...prev, open }))}
+        onConfirm={handleDeleteUserConfirm}
+        userName={deleteUserDialog.userName}
+      />
     </div>
   );
 };

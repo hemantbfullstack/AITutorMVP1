@@ -15,6 +15,8 @@ interface MessageBubbleProps {
   timestamp?: string;
   isStreaming?: boolean;
   selectedVoiceId?: string;
+  autoPlayVoice?: boolean;
+  volume?: number;
 }
 
 export default function MessageBubble({ 
@@ -23,7 +25,9 @@ export default function MessageBubble({
   image, 
   timestamp, 
   isStreaming,
-  selectedVoiceId
+  selectedVoiceId,
+  autoPlayVoice = false,
+  volume = 0.7
 }: MessageBubbleProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -45,6 +49,24 @@ export default function MessageBubble({
     // Clear cache when voice changes to avoid mixing voices
     sessionStorage.removeItem(cacheKey);
   }, [selectedVoiceId, cacheKey]);
+
+  // Auto-play functionality
+  useEffect(() => {
+    if (autoPlayVoice && role === "assistant" && !isStreaming && content && !isPlaying && !audioUrl) {
+      // Small delay to ensure message is fully rendered
+      const timer = setTimeout(() => {
+        handlePlayVoice();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPlayVoice, role, isStreaming, content, isPlaying, audioUrl]);
+
+  // Set volume when audio is loaded
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume, audioUrl]);
 
   // Render LaTeX content
   const renderContent = (text: string) => {
@@ -110,8 +132,8 @@ export default function MessageBubble({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
         },
-        credentials: "include",
         body: JSON.stringify({ 
           text: content,
           voice: selectedVoiceId, // This should now be "alloy", "echo", etc.
@@ -269,6 +291,7 @@ export default function MessageBubble({
           ref={audioRef}
           onEnded={handleAudioEnded}
           onError={() => setIsPlaying(false)}
+          volume={volume}
         />
       </div>
     );

@@ -34,7 +34,11 @@ export interface PlansResponse {
 // Fetch available plans from the backend
 export async function fetchPlans(): Promise<StripePlan[]> {
   try {
-    const response = await fetch('/api/stripe/plans');
+    const response = await fetch('/api/stripe/plans', {
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    });
     const data: PlansResponse = await response.json();
     
     if (!response.ok) {
@@ -57,6 +61,7 @@ export async function createCheckoutSession(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
       },
       body: JSON.stringify(request),
     });
@@ -83,6 +88,9 @@ export async function syncPlans(): Promise<StripePlan[]> {
   try {
     const response = await fetch('/api/stripe/sync-plans', {
       method: 'POST',
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
+      },
     });
     
     const data: PlansResponse = await response.json();

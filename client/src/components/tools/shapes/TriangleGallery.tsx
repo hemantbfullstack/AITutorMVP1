@@ -16,31 +16,31 @@ const triangleDefinitions: TriangleDefinition[] = [
     type: "equilateral",
     title: "Equilateral",
     description: "All sides equal, all angles 60°",
-    vertices: [[100, 180], [200, 180], [150, 93.4]]
+    vertices: [[120, 200], [220, 200], [170, 113.4]]
   },
   {
     type: "isosceles",
     title: "Isosceles (Acute)",
     description: "Two sides equal, two angles equal",
-    vertices: [[100, 180], [200, 180], [150, 100]]
+    vertices: [[120, 200], [220, 200], [170, 120]]
   },
   {
     type: "scalene",
     title: "Scalene (Acute)",
     description: "All sides different, all angles < 90°",
-    vertices: [[100, 180], [210, 180], [140, 110]]
+    vertices: [[120, 200], [230, 200], [160, 130]]
   },
   {
     type: "right",
     title: "Right-angled",
     description: "One 90° angle",
-    vertices: [[100, 180], [200, 180], [100, 120]]
+    vertices: [[120, 200], [220, 200], [120, 140]]
   },
   {
     type: "obtuse",
     title: "Obtuse",
     description: "One angle > 90°",
-    vertices: [[100, 180], [220, 180], [110, 140]]
+    vertices: [[120, 200], [240, 200], [130, 160]]
   }
 ];
 
@@ -75,13 +75,13 @@ export function TriangleGallery({ highlightType }: TriangleGalleryProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Triangle visualization */}
-              <div className="w-full bg-slate-50 rounded-lg border p-3 flex justify-center">
+              <div className="w-full bg-slate-50 rounded-lg border p-4 flex justify-center">
                 <TriangleDrawer
                   vertices={triangle.vertices}
                   showLabels={true}
                   showAngles={true}
                   showDimensions={true}
-                  size={160}
+                  size={200}
                 />
               </div>
               

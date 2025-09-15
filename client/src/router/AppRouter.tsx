@@ -12,6 +12,8 @@ const Signup = lazy(() => import("@/pages/signup"));
 const Tutor = lazy(() => import("@/pages/tutor"));
 const Papers = lazy(() => import("@/pages/papers"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+const KnowledgeBaseManager = lazy(() => import("@/pages/KnowledgeBaseManager"));
+const TutorPage = lazy(() => import("@/pages/TutorPage"));
 const PricingPage = lazy(() => import("@/components/pricing/PricingPage"));
 const SuccessPage = lazy(() => import("@/pages/success"));
 const CancelPage = lazy(() => import("@/pages/cancel"));
@@ -55,33 +57,43 @@ const PublicLanding = React.memo(() => (
 ));
 
 const PublicLogin = React.memo(() => (
-  <Suspense fallback={<LoadingSpinner />}>
-    <Login />
-  </Suspense>
+  <MainLayout>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Login />
+    </Suspense>
+  </MainLayout>
 ));
 
 const PublicSignup = React.memo(() => (
-  <Suspense fallback={<LoadingSpinner />}>
-    <Signup />
-  </Suspense>
+  <MainLayout>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Signup />
+    </Suspense>
+  </MainLayout>
 ));
 
 const PublicPricing = React.memo(() => (
-  <Suspense fallback={<LoadingSpinner />}>
-    <PricingPage />
-  </Suspense>
+  <MainLayout>
+    <Suspense fallback={<LoadingSpinner />}>
+      <PricingPage />
+    </Suspense>
+  </MainLayout>
 ));
 
 const PublicSuccess = React.memo(() => (
-  <Suspense fallback={<LoadingSpinner />}>
-    <SuccessPage />
-  </Suspense>
+  <MainLayout>
+    <Suspense fallback={<LoadingSpinner />}>
+      <SuccessPage />
+    </Suspense>
+  </MainLayout>
 ));
 
 const PublicCancel = React.memo(() => (
-  <Suspense fallback={<LoadingSpinner />}>
-    <CancelPage />
-  </Suspense>
+  <MainLayout>
+    <Suspense fallback={<LoadingSpinner />}>
+      <CancelPage />
+    </Suspense>
+  </MainLayout>
 ));
 
 const ProtectedTutor = React.memo(() => (
@@ -124,10 +136,28 @@ const ProtectedPlanSync = React.memo(() => (
   </ProtectedRoute>
 ));
 
+const ProtectedKnowledgeBaseManager = React.memo(() => (
+  <ProtectedRoute requiredRole="admin">
+    <Suspense fallback={<LoadingSpinner />}>
+      <KnowledgeBaseManager />
+    </Suspense>
+  </ProtectedRoute>
+));
+
+const ProtectedTutorPage = React.memo(() => (
+  <ProtectedRoute>
+    <Suspense fallback={<LoadingSpinner />}>
+      <TutorPage />
+    </Suspense>
+  </ProtectedRoute>
+));
+
 const PublicNotFound = React.memo(() => (
-  <Suspense fallback={<LoadingSpinner />}>
-    <NotFound />
-  </Suspense>
+  <MainLayout>
+    <Suspense fallback={<LoadingSpinner />}>
+      <NotFound />
+    </Suspense>
+  </MainLayout>
 ));
 
 export default function AppRouter() {
@@ -155,21 +185,19 @@ export default function AppRouter() {
       {/* Public routes - always accessible */}
       <Route path="/login" component={PublicLogin} />
       <Route path="/signup" component={PublicSignup} />
-      <Route path="/pricing" component={PublicPricing} />
       <Route path="/success" component={PublicSuccess} />
-      <Route path="/cancel" component={PublicCancel} />
-      <Route path="/tutorCostings" component={TutorCostCalculator} />
-
-      
+      <Route path="/cancel" component={PublicCancel} />     
 
       {/* Protected routes - require authentication */}
       <Route path="/tutor" component={ProtectedTutor} />
       <Route path="/papers" component={ProtectedPapers} />
+      <Route path="/knowledge-base" component={ProtectedKnowledgeBaseManager} />
+      
 
       {/* Admin Routes - require admin role */}
       <Route path="/admin" component={ProtectedAdminDashboard} />
       <Route path="/admin/users" component={ProtectedUserManagement} />
-      <Route path="/admin/sync" component={ProtectedPlanSync} />
+     
 
       {/* 404 - only show when no other routes match */}
       <Route component={PublicNotFound} />

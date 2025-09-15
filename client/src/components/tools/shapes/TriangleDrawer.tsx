@@ -150,7 +150,7 @@ export function TriangleDrawer({
         id={svgId}
         width={size}
         height={size}
-        viewBox={`0 0 ${size} ${size}`}
+        viewBox={`-20 -20 ${size + 40} ${size + 40}`}
         className="border border-slate-200 bg-white rounded"
         data-testid="triangle-svg"
       >

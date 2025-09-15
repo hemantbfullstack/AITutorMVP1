@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { authService } from "@/services/authService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,7 +22,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { localLoginSchema, type LocalLogin } from "@shared/schema";
+import { z } from "zod";
+// Local login schema
+const localLoginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LocalLogin = z.infer<typeof localLoginSchema>;
 import { queryClient } from "@/lib/queryClient";
 
 export default function Login() {
@@ -38,24 +46,17 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LocalLogin) => {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || "Login failed");
-      }
-
-      const result = await response.json();
-      return result;
+      return await authService.login(data);
     },
     onSuccess: async (data) => {
+      console.log('Login successful, data:', data);
+      // Trigger a custom event to notify AuthContext of token change
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'auth_token',
+        newValue: localStorage.getItem('auth_token'),
+        oldValue: null
+      }));
+      
       // Invalidate and refetch user data to update authentication state
       queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
       await queryClient.refetchQueries({ queryKey: ["auth", "user"] });

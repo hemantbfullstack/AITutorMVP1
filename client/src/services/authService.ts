@@ -1,9 +1,5 @@
-import axios from "axios";
-
-const authApi = axios.create({
-  baseURL: "/api",
-  withCredentials: true,
-});
+import apiClient from "@/utils/apiClient";
+import { TokenManager } from "@/utils/tokenManager";
 
 export interface LoginData {
   email: string;
@@ -28,21 +24,67 @@ export interface User {
 
 export const authService = {
   async login(data: LoginData): Promise<User> {
-    const res = await authApi.post("/auth/login", data);
-    return res.data.user;
+    const res = await apiClient.post("/auth/login", data);    
+    const { user, token } = res.data;    
+    // Store JWT token
+    if (token) {
+      TokenManager.setToken(token);
+      console.log('Token stored:', token);
+    } else {
+      console.error('No token received from server');
+    }
+    
+    return user;
   },
 
   async signup(data: SignupData): Promise<User> {
-    const res = await authApi.post("/auth/signup", data);
-    return res.data.user;
+    const res = await apiClient.post("/auth/register", data);
+    const { user, token } = res.data;
+    
+    // Store JWT token
+    if (token) {
+      TokenManager.setToken(token);
+    }
+    
+    return user;
   },
 
   async logout(): Promise<void> {
-    await authApi.post("/logout");
+    // Remove token from localStorage
+    TokenManager.removeToken();
   },
 
   async getCurrentUser(): Promise<User> {
-    const res = await authApi.get("/auth/user");
-    return res.data;
+    // With JWT, we can decode the token to get user info
+    const token = TokenManager.getToken();
+    console.log('Getting current user, token:', token ? 'exists' : 'missing');
+    
+    if (!token) {
+      throw new Error('No token found');
+    }
+    
+    if (TokenManager.isTokenExpired(token)) {
+      // Remove expired token
+      TokenManager.removeToken();
+      throw new Error('Token expired');
+    }
+    
+    const payload = TokenManager.getTokenPayload(token);
+    console.log('Token payload:', payload);
+    
+    if (!payload) {
+      throw new Error('Invalid token');
+    }
+    
+    return {
+      id: payload.userId,
+      email: payload.email,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      role: payload.role,
+      profileImageUrl: payload.profileImageUrl,
+      planId: payload.planId,
+      usageCount: payload.usageCount,
+    };
   },
 };
