@@ -50,16 +50,10 @@ export default function Login() {
     },
     onSuccess: async (data) => {
       console.log('Login successful, data:', data);
-      // Trigger a custom event to notify AuthContext of token change
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'auth_token',
-        newValue: localStorage.getItem('auth_token'),
-        oldValue: null
-      }));
       
       // Invalidate and refetch user data to update authentication state
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-      await queryClient.refetchQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/user/profile"] });
 
       toast({
         title: "Success",

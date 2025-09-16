@@ -7,7 +7,7 @@ export function useAuth() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem("auth_token");
         if (!token) {
           setUser(null);
           setIsLoading(false);
@@ -16,20 +16,20 @@ export function useAuth() {
 
         const response = await fetch("/api/user/profile", {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
           credentials: "include",
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch user: ${response.status}`);
         }
-        
+
         const userData = await response.json();
         setUser(userData);
       } catch (error) {
-        console.error('Auth error:', error);
+        console.error("Auth error:", error);
         setUser(null);
       } finally {
         setIsLoading(false);
