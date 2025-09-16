@@ -286,4 +286,30 @@ router.use('/knowledge-base', knowledgeBaseRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/import', importRoutes);
 
+// ============================================================================
+// DEVELOPMENT SEEDING ROUTE (Development only)
+// ============================================================================
+if (process.env.NODE_ENV === 'development') {
+  router.post('/dev/seed', async (req, res) => {
+    try {
+      // Import seedDatabase function
+      const seedDatabase = await import('../seed.js');
+      await seedDatabase.default();
+      
+      res.json({ 
+        success: true, 
+        message: '🎉 Database seeding completed successfully!',
+        details: 'Check server logs for details and test credentials.'
+      });
+    } catch (error) {
+      console.error('❌ Seeding failed:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Database seeding failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+}
+
 export default router;
