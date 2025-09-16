@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react";
 
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  planId: string;
+  usageCount: number;
+  imageUsageCount: number;
+  voiceUsageCount: number;
+  paperUsageCount: number;
+}
+
 export function useAuth() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,7 +53,7 @@ export function useAuth() {
   }, []);
 
   return {
-    user,
+    user: user as User | null,
     isLoading,
     isAuthenticated: !!user,
   };

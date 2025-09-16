@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,7 +23,6 @@ import {
 } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { InlineMath, BlockMath } from "react-katex";
-import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface GeneratedPaper {
@@ -80,7 +78,6 @@ const IB_TOPICS = {
 
 export default function Papers() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { isAuthenticated, isLoading } = useAuth();
 
   // Redirect to home if not authenticated
@@ -126,11 +123,13 @@ export default function Papers() {
   const [showMarkscheme, setShowMarkscheme] = useState(false);
 
   // Fetch user's papers
-  const { data: papers = [], isLoading: papersLoading } = useQuery<
-    GeneratedPaper[]
-  >({
-    queryKey: ["/api/papers"],
-    queryFn: async () => {
+  const [papers, setPapers] = useState<GeneratedPaper[]>([]);
+  const [papersLoading, setPapersLoading] = useState(false);
+
+  const fetchPapers = async () => {
+    if (!isAuthenticated) return;
+    setPapersLoading(true);
+    try {
       const response = await fetch("/api/papers", {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
@@ -139,21 +138,31 @@ export default function Papers() {
       if (!response.ok) {
         throw new Error("Failed to fetch papers");
       }
-      return response.json();
-    },
-    retry: false,
-  });
+      const data = await response.json();
+      setPapers(data);
+    } catch (error) {
+      console.error("Failed to fetch papers:", error);
+    } finally {
+      setPapersLoading(false);
+    }
+  };
 
-  // Generate paper mutation
-  const generateMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
+  useEffect(() => {
+    fetchPapers();
+  }, [isAuthenticated]);
+
+  // Generate paper function
+  const [generateLoading, setGenerateLoading] = useState(false);
+
+  const generatePaper = async (data: typeof formData) => {
+    setGenerateLoading(true);
+    try {
       const response = await apiRequest("/api/papers/generate", {
         method: "POST",
         body: JSON.stringify(data),
       });
-      return response;
-    },
-    onSuccess: async (result: any) => {
+      
+      const result = response;
       const paperId = result.paperId;
 
       // Fetch the generated paper
@@ -161,15 +170,14 @@ export default function Papers() {
       setSelectedPaper(paper as GeneratedPaper);
 
       // Refetch papers list
-      queryClient.invalidateQueries({ queryKey: ["/api/papers"] });
+      fetchPapers();
 
       toast({
         title: "Paper Generated",
         description:
           "Your IB Mathematics paper has been generated successfully!",
       });
-    },
-    onError: (error) => {
+    } catch (error: any) {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -187,18 +195,24 @@ export default function Papers() {
           error instanceof Error ? error.message : "Failed to generate paper",
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setGenerateLoading(false);
+    }
+  };
 
-  // Download PDF mutation
-  const downloadMutation = useMutation({
-    mutationFn: async ({
-      paperId,
-      type,
-    }: {
-      paperId: string;
-      type: "paper" | "markscheme";
-    }) => {
+
+  // Download PDF function
+  const [downloadLoading, setDownloadLoading] = useState(false);
+
+  const downloadPDF = async ({
+    paperId,
+    type,
+  }: {
+    paperId: string;
+    type: "paper" | "markscheme";
+  }) => {
+    setDownloadLoading(true);
+    try {
       const response = await fetch(`/api/papers/${paperId}/pdf`, {
         method: "POST",
         headers: {
@@ -212,13 +226,11 @@ export default function Papers() {
         throw new Error("Failed to download PDF");
       }
 
-      return response.blob();
-    },
-    onSuccess: (blob, variables) => {
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${selectedPaper?.subject}_${selectedPaper?.level}_${selectedPaper?.paperType}_${variables.type}.pdf`;
+      a.download = `${selectedPaper?.subject}_${selectedPaper?.level}_${selectedPaper?.paperType}_${type}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -227,18 +239,19 @@ export default function Papers() {
       toast({
         title: "Download Started",
         description: `${
-          variables.type === "paper" ? "Paper" : "Markscheme"
+          type === "paper" ? "Paper" : "Markscheme"
         } PDF download started.`,
       });
-    },
-    onError: (error) => {
+    } catch (error) {
       toast({
         title: "Download Failed",
         description: "Failed to download PDF",
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
 
   const handleTopicToggle = (topic: string) => {
     setFormData((prev) => ({
@@ -250,7 +263,7 @@ export default function Papers() {
   };
 
   const handleGenerate = () => {
-    generateMutation.mutate(formData);
+    generatePaper(formData);
   };
 
   const renderMathContent = (text: string) => {
@@ -416,11 +429,11 @@ export default function Papers() {
 
                     <Button
                       onClick={handleGenerate}
-                      disabled={generateMutation.isPending}
+                      disabled={generateLoading}
                       className="w-full"
                       data-testid="button-generate-paper"
                     >
-                      {generateMutation.isPending
+                      {generateLoading
                         ? "Generating..."
                         : "Generate Paper"}
                     </Button>
@@ -464,12 +477,12 @@ export default function Papers() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            downloadMutation.mutate({
+                            downloadPDF({
                               paperId: selectedPaper.id,
                               type: "paper",
                             })
                           }
-                          disabled={downloadMutation.isPending}
+                          disabled={downloadLoading}
                           data-testid="button-download-paper"
                         >
                           <FileDown className="w-4 h-4 mr-1" />
@@ -479,12 +492,12 @@ export default function Papers() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            downloadMutation.mutate({
+                            downloadPDF({
                               paperId: selectedPaper.id,
                               type: "markscheme",
                             })
                           }
-                          disabled={downloadMutation.isPending}
+                          disabled={downloadLoading}
                           data-testid="button-download-markscheme"
                         >
                           <FileDown className="w-4 h-4 mr-1" />
@@ -596,7 +609,7 @@ export default function Papers() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
-                                  downloadMutation.mutate({
+                                  downloadPDF({
                                     paperId: paper.id,
                                     type: "paper",
                                   })
@@ -610,7 +623,7 @@ export default function Papers() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
-                                  downloadMutation.mutate({
+                                  downloadPDF({
                                     paperId: paper.id,
                                     type: "markscheme",
                                   })

@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Trash2, Plus, TrendingUp, Send, Brain, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import Plot from "react-plotly.js";
-import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 interface GraphFunction {
@@ -53,9 +52,12 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
   const [wolframSteps, setWolframSteps] = useState<any[]>([]);
   const [sendToChatEnabled, setSendToChatEnabled] = useState(true);
 
-  // Wolfram Alpha Simple API mutation for images
-  const wolframSimpleMutation = useMutation({
-    mutationFn: async (query: string) => {
+  // Wolfram Alpha Simple API function for images
+  const [wolframSimpleLoading, setWolframSimpleLoading] = useState(false);
+
+  const queryWolframSimple = async (query: string) => {
+    setWolframSimpleLoading(true);
+    try {
       const response = await fetch("/api/wolfram/simple", {
         method: "POST",
         headers: { 
@@ -70,9 +72,7 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
         throw new Error(error.message || `HTTP ${response.status}`);
       }
       
-      return await response.json();
-    },
-    onSuccess: (data) => {
+      const data = await response.json();
       setWolframImage(data.imageBase64);
       toast({
         title: "Wolfram Plot Generated",
@@ -84,8 +84,7 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
         const message = `Rendered graph: ${wolframQuery}`;
         onSendToChat({ kind: "image", text: message, imageBase64: data.imageBase64 });
       }
-    },
-    onError: (error: Error) => {
+    } catch (error: any) {
       console.error("Wolfram API error:", error);
       
       if (error.message.includes("WOLFRAM_APP_ID not configured")) {
@@ -101,12 +100,17 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
           variant: "destructive",
         });
       }
-    },
-  });
+    } finally {
+      setWolframSimpleLoading(false);
+    }
+  };
 
-  // Wolfram Alpha Full API mutation for structured data with steps
-  const wolframFullMutation = useMutation({
-    mutationFn: async (query: string) => {
+  // Wolfram Alpha Full API function for structured data with steps
+  const [wolframFullLoading, setWolframFullLoading] = useState(false);
+
+  const queryWolframFull = async (query: string) => {
+    setWolframFullLoading(true);
+    try {
       const response = await fetch("/api/wolfram/full", {
         method: "POST",
         headers: { 
@@ -121,9 +125,7 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
         throw new Error(error.message || `HTTP ${response.status}`);
       }
       
-      return await response.json();
-    },
-    onSuccess: (data) => {
+      const data = await response.json();
       setWolframSteps(data.pods || []);
       toast({
         title: "Wolfram Analysis Complete",
@@ -135,8 +137,7 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
         const message = `🧮 Analyzed your query via Wolfram: ${wolframQuery}`;
         onSendToChat({ kind: "text", text: message });
       }
-    },
-    onError: (error: Error) => {
+    } catch (error: any) {
       console.error("Wolfram Full API error:", error);
       
       if (error.message.includes("WOLFRAM_APP_ID not configured")) {
@@ -152,8 +153,10 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
           variant: "destructive",
         });
       }
-    },
-  });
+    } finally {
+      setWolframFullLoading(false);
+    }
+  };
 
   const addFunction = () => {
     const newId = String(functions.length + 1);
@@ -370,22 +373,22 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
             <Button
               variant="outline"
               size="sm"
-              onClick={() => wolframSimpleMutation.mutate(wolframQuery)}
-              disabled={wolframSimpleMutation.isPending}
+              onClick={() => queryWolframSimple(wolframQuery)}
+              disabled={wolframSimpleLoading}
               data-testid="button-wolfram-plot"
             >
               <Brain className="w-4 h-4 mr-1" />
-              {wolframSimpleMutation.isPending ? "Generating..." : "Get Plot"}
+              {wolframSimpleLoading ? "Generating..." : "Get Plot"}
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => wolframFullMutation.mutate(wolframQuery)}
-              disabled={wolframFullMutation.isPending}
+              onClick={() => queryWolframFull(wolframQuery)}
+              disabled={wolframFullLoading}
               data-testid="button-wolfram-steps"
             >
               <Brain className="w-4 h-4 mr-1" />
-              {wolframFullMutation.isPending ? "Analyzing..." : "Get Steps"}
+              {wolframFullLoading ? "Analyzing..." : "Get Steps"}
             </Button>
           </div>
         </div>
@@ -446,12 +449,12 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
           </div>
           <div className="flex gap-2">
             <Button
-              onClick={() => wolframSimpleMutation.mutate(wolframQuery)}
-              disabled={wolframSimpleMutation.isPending || !wolframQuery.trim()}
+              onClick={() => queryWolframSimple(wolframQuery)}
+              disabled={wolframSimpleLoading || !wolframQuery.trim()}
               className="flex-1"
               data-testid="button-draw-wolfram"
             >
-              {wolframSimpleMutation.isPending ? (
+              {wolframSimpleLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Drawing...
@@ -464,13 +467,13 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
               )}
             </Button>
             <Button
-              onClick={() => wolframFullMutation.mutate(wolframQuery)}
-              disabled={wolframFullMutation.isPending || !wolframQuery.trim()}
+              onClick={() => queryWolframFull(wolframQuery)}
+              disabled={wolframFullLoading || !wolframQuery.trim()}
               variant="outline"
               className="flex-1"
               data-testid="button-analyze-wolfram"
             >
-              {wolframFullMutation.isPending ? (
+              {wolframFullLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Analyzing...

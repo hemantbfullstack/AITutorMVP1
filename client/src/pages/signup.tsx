@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { authService } from "@/services/authService";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 // Local signup schema
 const localSignupSchema = z.object({
@@ -37,6 +35,7 @@ type LocalSignup = z.infer<typeof localSignupSchema>;
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LocalSignup>({
     resolver: zodResolver(localSignupSchema),
@@ -48,22 +47,18 @@ export default function Signup() {
     },
   });
 
-  const signupMutation = useMutation({
-    mutationFn: async (data: LocalSignup) => {
-      return await authService.signup(data);
-    },
-    onSuccess: async (data) => {
-      console.log('Signup successful, data:', data);
+  const onSubmit = async (data: LocalSignup) => {
+    setIsLoading(true);
+    try {
+      const result = await authService.signup(data);
+      console.log('Signup successful, data:', result);
+      
       // Trigger a custom event to notify AuthContext of token change
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'auth_token',
         newValue: localStorage.getItem('auth_token'),
         oldValue: null
       }));
-      
-      // Invalidate and refetch user data to update authentication state
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-      await queryClient.refetchQueries({ queryKey: ["auth", "user"] });
 
       toast({
         title: "Success",
@@ -74,18 +69,15 @@ export default function Signup() {
       setTimeout(() => {
         setLocation("/");
       }, 100);
-    },
-    onError: (error: Error) => {
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Signup failed",
         variant: "destructive",
       });
-    },
-  });
-
-  const onSubmit = (data: LocalSignup) => {
-    signupMutation.mutate(data);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -177,12 +169,10 @@ export default function Signup() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={signupMutation.isPending}
+                disabled={isLoading}
                 data-testid="button-signup"
               >
-                {signupMutation.isPending
-                  ? "Creating account..."
-                  : "Create Account"}
+                {isLoading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
           </Form>

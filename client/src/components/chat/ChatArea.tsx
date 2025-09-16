@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import apiClient from "@/utils/apiClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -98,7 +97,6 @@ export default function ChatArea({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user: storeUser } = useAuth();
 
@@ -178,15 +176,25 @@ export default function ChatArea({
   };
 
   // Fetch sessions for IB tutor
-  const { data: sessions } = useQuery({
-    queryKey: ["/api/tutor/sessions"],
-    queryFn: async () => {
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  const fetchSessions = async () => {
+    if (tutorMode !== "ib") return;
+    setSessionsLoading(true);
+    try {
       const response = await apiClient.get("/tutor/sessions");
-      return response.data;
-    },
-    retry: false,
-    enabled: tutorMode === "ib",
-  });
+      setSessions(response.data);
+    } catch (error) {
+      console.error("Failed to fetch sessions:", error);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSessions();
+  }, [tutorMode]);
 
   // Load session messages when sessionId changes
   useEffect(() => {
@@ -347,20 +355,20 @@ export default function ChatArea({
       window.removeEventListener("app:sendToChat", handler as EventListener);
   }, []);
 
-  // Self-test mutation (only for IB mode)
-  const selfTest = useMutation({
-    mutationFn: async () => {
+  // Self-test function (only for IB mode)
+  const [selfTestLoading, setSelfTestLoading] = useState(false);
+
+  const runSelfTest = async () => {
+    setSelfTestLoading(true);
+    try {
       const response = await apiClient.post("/tutor/selftest", {});
-      return response.data;
-    },
-    onSuccess: (data: any) => {
+      const data = response.data;
       setSelfTestResult(`✓ PASS: ${data.text} (${data.model})`);
       toast({
         title: "Self-Test Passed",
         description: `Tutor is ready: ${data.text}`,
       });
-    },
-    onError: (error: any) => {
+    } catch (error: any) {
       setSelfTestResult(`✗ FAIL: ${error.message}`);
       if (isUnauthorizedError(error)) {
         toast({
@@ -378,18 +386,20 @@ export default function ChatArea({
         description: error.message,
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setSelfTestLoading(false);
+    }
+  };
 
-  // IB Tutor send message mutation
-  const sendMessage = useMutation({
-    mutationFn: async ({
+  // IB Tutor send message function
+  const sendMessage = async ({
       message,
       useNonStream = false,
     }: {
       message: string;
       useNonStream?: boolean;
     }) => {
+    try {
       const trimmed = message.trim();
       if (!trimmed) {
         throw new Error("Message cannot be empty");
@@ -417,7 +427,18 @@ export default function ChatArea({
       });
 
       if (useNonStream) {
-        return response.data;
+        const data = response.data;
+        const assistantMessage: Message = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: data.content,
+          createdAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setStreamingMessage("");
+        setIsStreaming(false);
+        fetchSessions(); // Refresh sessions
+        return data;
       } else {
         const url = "/api/tutor/message";
         const fetchResponse = await fetch(url, {
@@ -467,23 +488,20 @@ export default function ChatArea({
           }
         }
 
-        return { content: assistantContent, mode: "stream" };
-      }
-    },
-    onSuccess: (data) => {
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: data.content,
+          content: assistantContent,
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setStreamingMessage("");
       setIsStreaming(false);
+        fetchSessions(); // Refresh sessions
 
-      queryClient.invalidateQueries({ queryKey: ["/api/tutor/sessions"] });
-    },
-    onError: (error: any) => {
+        return { content: assistantContent, mode: "stream" };
+      }
+    } catch (error: any) {
       setIsStreaming(false);
       setStreamingMessage("");
 
@@ -547,14 +565,14 @@ export default function ChatArea({
           description: "Switching to non-streaming mode...",
         });
         setTimeout(() => {
-          sendMessage.mutate({
+          sendMessage({
             message: error.originalMessage || "",
             useNonStream: true,
           });
         }, 1000);
       }
-    },
-  });
+    }
+  };
 
   const handleSendMessageWithImage = (message: string, imageBase64: string) => {
     if (!message.trim()) return;
@@ -569,7 +587,7 @@ export default function ChatArea({
     setMessages((prev) => [...prev, imageMessage]);
 
     if (tutorMode === "ib") {
-      sendMessage.mutate({
+      sendMessage({
         message: `Please explain this graph: ${message}`,
         useNonStream: false,
       });
@@ -609,7 +627,7 @@ export default function ChatArea({
         setMessages((prev) => [...prev, plotMessage]);
 
         setTimeout(() => {
-          sendMessage.mutate({
+          sendMessage({
             message: `Explain this mathematical graph: ${plotQuery.replace(/^plot\s+/i, "")}`,
             useNonStream: false,
           });
@@ -667,7 +685,7 @@ export default function ChatArea({
       }
     }
 
-    sendMessage.mutate({ message, useNonStream: false });
+    sendMessage({ message, useNonStream: false });
   };
 
   const handleNewChat = () => {
@@ -780,12 +798,12 @@ export default function ChatArea({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => selfTest.mutate()}
-                disabled={selfTest.isPending}
+                onClick={() => runSelfTest()}
+                disabled={selfTestLoading}
                 className="text-sm font-medium px-4 py-2 rounded-xl bg-white border-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 transition-all duration-300 hover:scale-105 shadow-md"
                 data-testid="button-self-test"
               >
-                {selfTest.isPending ? (
+                {selfTestLoading ? (
                   <>
                     <Zap className="w-4 h-4 mr-2 animate-spin" />
                     Testing...

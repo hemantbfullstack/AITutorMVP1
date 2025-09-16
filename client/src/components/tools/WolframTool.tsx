@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Send, Brain, Loader2, AlertCircle } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 
 interface WolframResult {
@@ -25,45 +24,47 @@ interface WolframToolProps {
 export function WolframTool({ onSendToChat }: WolframToolProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<WolframResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const wolframMutation = useMutation({
-    mutationFn: async (query: string) => {
+  const queryWolfram = async (queryText: string) => {
+    setIsLoading(true);
+    try {
       const response = await fetch("/api/tools/wolfram", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: queryText }),
       });
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
+      const data = await response.json();
+      
       const newResult: WolframResult = {
-        query,
+        query: queryText,
         result: data.result || "No result available",
         image: data.image,
         timestamp: Date.now(),
       };
       setResults((prev) => [newResult, ...prev.slice(0, 4)]); // Keep last 5 results
       setQuery("");
-    },
-    onError: (error) => {
+    } catch (error) {
       console.error("Wolfram query error:", error);
       const errorResult: WolframResult = {
-        query,
+        query: queryText,
         result:
           "Error: Unable to process query. Please check your connection and try again.",
         timestamp: Date.now(),
       };
       setResults((prev) => [errorResult, ...prev.slice(0, 4)]);
-    },
-  });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      wolframMutation.mutate(query.trim());
+      queryWolfram(query.trim());
     }
   };
 
@@ -104,15 +105,15 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Enter mathematical query (e.g., integrate x^2, solve x^2 + 2x = 0)"
                 className="flex-1"
-                disabled={wolframMutation.isPending}
+                disabled={isLoading}
                 data-testid="input-wolfram-query"
               />
               <Button
                 type="submit"
-                disabled={!query.trim() || wolframMutation.isPending}
+                disabled={!query.trim() || isLoading}
                 data-testid="button-submit-query"
               >
-                {wolframMutation.isPending ? (
+                {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Send className="w-4 h-4" />
@@ -132,7 +133,7 @@ export function WolframTool({ onSendToChat }: WolframToolProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setQuery(example)}
-                  disabled={wolframMutation.isPending}
+                  disabled={isLoading}
                   className="text-xs"
                   data-testid={`button-example-${index}`}
                 >
