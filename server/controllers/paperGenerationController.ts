@@ -4,7 +4,7 @@ import { paperGeneratorService } from '../utils/paperGenerator.js';
 // Generate paper
 const generatePaper = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { subject, level, paperType, numQuestions, topics, calcAllowed } = req.body;
 
     const actualCalcAllowed =
@@ -60,7 +60,7 @@ const generatePaper = async (req: any, res: any) => {
 // Generate PDF for paper
 const generatePaperPDF = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { paperId } = req.params;
     const { type } = req.body; // "paper" | "markscheme"
 

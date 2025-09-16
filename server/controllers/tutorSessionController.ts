@@ -4,7 +4,7 @@ import Message from '../models/Message.js';
 // Create new tutor session
 const createTutorSession = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { title, ibSubject, ibLevel } = req.body;
 
     const session = new TutorSession({
@@ -30,7 +30,7 @@ const createTutorSession = async (req: any, res: any) => {
 const getTutorSession = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const session = await TutorSession.findById(id);
     if (!session) {
@@ -59,7 +59,7 @@ const getTutorSession = async (req: any, res: any) => {
 // Get all tutor sessions for a user
 const getUserTutorSessions = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { page = 1, limit = 10, ibSubject, ibLevel } = req.query;
     
     const pageNum = parseInt(page);
@@ -105,7 +105,7 @@ const getUserTutorSessions = async (req: any, res: any) => {
 const updateTutorSession = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { title, ibSubject, ibLevel, endedAt } = req.body;
 
     const session = await TutorSession.findById(id);
@@ -140,7 +140,7 @@ const updateTutorSession = async (req: any, res: any) => {
 const endTutorSession = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const session = await TutorSession.findById(id);
     if (!session) {
@@ -169,7 +169,7 @@ const endTutorSession = async (req: any, res: any) => {
 const deleteTutorSession = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const session = await TutorSession.findById(id);
     if (!session) {

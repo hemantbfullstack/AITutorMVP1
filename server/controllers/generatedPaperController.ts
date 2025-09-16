@@ -4,7 +4,7 @@ import GeneratedPaper from '../models/GeneratedPaper.js';
 // Create new generated paper
 const createGeneratedPaper = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { subject, level, paperType, topics, questionsJson, markschemeJson, totalMarks } = req.body;
 
     const paper = new GeneratedPaper({
@@ -34,7 +34,7 @@ const createGeneratedPaper = async (req: any, res: any) => {
 const getGeneratedPaper = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const paper = await GeneratedPaper.findById(id);
     if (!paper) {
@@ -56,7 +56,7 @@ const getGeneratedPaper = async (req: any, res: any) => {
 // Get all generated papers for a user
 const getUserGeneratedPapers = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { page = 1, limit = 10, subject, level, paperType } = req.query;
     
     const pageNum = parseInt(page);
@@ -106,7 +106,7 @@ const getUserGeneratedPapers = async (req: any, res: any) => {
 const updateGeneratedPaper = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { topics, questionsJson, markschemeJson, totalMarks, pdfUrl, msPdfUrl } = req.body;
 
     const paper = await GeneratedPaper.findById(id);
@@ -143,7 +143,7 @@ const updateGeneratedPaper = async (req: any, res: any) => {
 const deleteGeneratedPaper = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const paper = await GeneratedPaper.findById(id);
     if (!paper) {

@@ -55,7 +55,7 @@ const tutorMessage = async (req: any, res: any) => {
   const isNonStreamMode = req.query.mode === "nonstream";
 
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { message, ibSubject, ibLevel, sessionId } = req.body;
 
     // Validate OpenAI API key

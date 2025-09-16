@@ -2,9 +2,18 @@ import { useQuery } from "@tanstack/react-query";
 
 export function useAuth() {
   const { data: user, isLoading } = useQuery({
-    queryKey: ["/api/auth/user"],
+    queryKey: ["/api/user/profile"],
     queryFn: async () => {
-      const response = await fetch("/api/auth/user", {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('No auth token found');
+      }
+
+      const response = await fetch("/api/user/profile", {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         credentials: "include",
       });
       

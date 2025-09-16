@@ -110,7 +110,7 @@ const login = async (req: any, res: any) => {
 // Get current user profile
 const getProfile = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const user = await User.findById(userId).select('-password');
     
     if (!user) {
@@ -127,7 +127,7 @@ const getProfile = async (req: any, res: any) => {
 // Update user profile
 const updateProfile = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { firstName, lastName, email } = req.body;
 
     const user = await User.findById(userId);
@@ -159,7 +159,7 @@ const updateProfile = async (req: any, res: any) => {
 // Change password
 const changePassword = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
 
     const user = await User.findById(userId);

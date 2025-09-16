@@ -4,7 +4,7 @@ import TutorSession from '../models/TutorSession.js';
 // Create new message
 const createMessage = async (req: any, res: any) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { sessionId, role, content, image } = req.body;
 
     // Verify session exists and user has access
@@ -41,7 +41,7 @@ const createMessage = async (req: any, res: any) => {
 const getMessagesBySession = async (req: any, res: any) => {
   try {
     const { sessionId } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { limit = 50, page = 1 } = req.query;
 
     // Verify session exists and user has access
@@ -86,7 +86,7 @@ const getMessagesBySession = async (req: any, res: any) => {
 const getLatestMessages = async (req: any, res: any) => {
   try {
     const { sessionId } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { limit = 10 } = req.query;
 
     // Verify session exists and user has access
@@ -115,7 +115,7 @@ const getLatestMessages = async (req: any, res: any) => {
 const getMessage = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const message = await Message.findById(id);
     if (!message) {
@@ -139,7 +139,7 @@ const getMessage = async (req: any, res: any) => {
 const updateMessage = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     const { content, image } = req.body;
 
     const message = await Message.findById(id);
@@ -178,7 +178,7 @@ const updateMessage = async (req: any, res: any) => {
 const deleteMessage = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     const message = await Message.findById(id);
     if (!message) {
