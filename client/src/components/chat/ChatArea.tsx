@@ -1143,7 +1143,7 @@ What would you like to work on today?`
                 {tutorMode === "knowledge" ? (
                   <Database className="w-5 h-5 text-white animate-pulse" />
                 ) : (
-                  <Brain className="w-5 h-5 text-white animate-pulse" />
+                <Brain className="w-5 h-5 text-white animate-pulse" />
                 )}
               </div>
               <div className="bg-white rounded-2xl px-6 py-4 shadow-lg border border-gray-200">
