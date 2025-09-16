@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const MongoURI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/ai-tutor-mvp";
-console.log("🔗 Connecting to MongoDB at:", MongoURI);
+console.log("🔗 Connecting to MongoDB...");
 mongoose
   .connect(MongoURI, {
     autoIndex: true,    
