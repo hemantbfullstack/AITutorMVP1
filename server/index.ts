@@ -9,22 +9,89 @@ import { initializePinecone } from "./config/pinecone.js";
 
 const app = express();
 
-// Enable CORS
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        process.env.CORS_ORIGIN || 'https://your-repl-domain.replit.dev',
-        `https://${process.env.REPLIT_DOMAINS}`,
-        `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-      ].filter(Boolean)
-    : ['http://localhost:5173', 'http://localhost:3000'], // Vite dev server
+// Enable CORS with better Replit support
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: Function) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? [
+          process.env.CORS_ORIGIN,
+          `https://${process.env.REPLIT_DOMAINS}`,
+          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`,
+          // Add common Replit patterns
+          /^https:\/\/.*\.replit\.dev$/,
+          /^https:\/\/.*\.repl\.co$/,
+          /^https:\/\/.*\.repl\.it$/
+        ].filter(Boolean)
+      : [
+          'http://localhost:5173', 
+          'http://localhost:3000',
+          'http://localhost:5000',
+          // Allow Replit dev origins
+          /^https:\/\/.*\.replit\.dev$/,
+          /^https:\/\/.*\.repl\.co$/,
+          /^https:\/\/.*\.repl\.it$/
+        ];
+    
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return origin === allowedOrigin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+
+// Fallback CORS for Replit development (more permissive)
+if (process.env.REPL_ID || process.env.REPL_SLUG) {
+  console.log('Replit environment detected, enabling fallback CORS');
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+    } else {
+      next();
+    }
+  });
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// CORS test endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.json({
+    message: 'CORS is working!',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    replId: process.env.REPL_ID,
+    replSlug: process.env.REPL_SLUG
+  });
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

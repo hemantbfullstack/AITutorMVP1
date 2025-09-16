@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { TokenManager } from './tokenManager';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// In Replit, frontend and backend run on the same domain
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (window.location.hostname.includes('replit') ? '' : 'http://localhost:5000');
 
 // Create axios instance
 export const apiClient = axios.create({
@@ -9,6 +11,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for CORS with credentials
 });
 
 // Request interceptor to add JWT token

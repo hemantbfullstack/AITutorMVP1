@@ -24,17 +24,33 @@ export interface User {
 
 export const authService = {
   async login(data: LoginData): Promise<User> {
-    const res = await apiClient.post("/auth/login", data);
-    const { user, token } = res.data;
-    // Store JWT token
-    if (token) {
-      TokenManager.setToken(token);
-      console.log("Token stored:", token);
-    } else {
-      console.error("No token received from server");
-    }
+    try {
+      console.log("Attempting login to:", apiClient.defaults.baseURL + "/auth/login");
+      console.log("Login data:", { email: data.email, password: "[REDACTED]" });
+      
+      const res = await apiClient.post("/auth/login", data);
+      console.log("Login response:", res);
+      
+      const { user, token } = res.data;
+      // Store JWT token
+      if (token) {
+        TokenManager.setToken(token);
+        console.log("Token stored successfully");
+      } else {
+        console.error("No token received from server");
+      }
 
-    return user;
+      return user;
+    } catch (error) {
+      console.error("Login error:", error);
+      console.error("Error details:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      throw error;
+    }
   },
 
   async signup(data: SignupData): Promise<User> {
