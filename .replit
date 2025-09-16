@@ -1,5 +1,9 @@
 run = "npm run dev:replit"
-modules = ["nodejs-18"]
+modules = ["nodejs-20"]
 hidden = [".replit", ".gitignore", "node_modules", "dist", "uploads"]
 ignorePorts = false
 env = { NODE_ENV = "development" }
+
+[[ports]]
+localPort = 5000
+externalPort = 80
