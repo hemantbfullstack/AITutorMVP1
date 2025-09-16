@@ -252,6 +252,7 @@ export default function ChatArea({
     if (!kbSessionId || !message.trim()) return;
 
     setIsStreaming(true);
+    setStreamingMessage(""); // Clear any previous streaming message
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -283,6 +284,7 @@ export default function ChatArea({
       });
     } finally {
       setIsStreaming(false);
+      setStreamingMessage(""); // Clear streaming message
     }
   };
 
@@ -1004,7 +1006,7 @@ export default function ChatArea({
                {/* Enhanced IB Settings */}
             {tutorMode === "ib" && (
               <div className="flex items-center space-x-3 bg-white/80 backdrop-blur-sm rounded-xl p-3 shadow-md border border-white/20">
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <Target className="w-4 h-4 text-indigo-600" />
                   <span className="text-sm font-medium text-gray-700">Subject:</span>
                 </div>
@@ -1031,7 +1033,7 @@ export default function ChatArea({
                     <SelectItem value="HL">Higher Level</SelectItem>
                     <SelectItem value="SL">Standard Level</SelectItem>
                   </SelectContent>
-                </Select>
+                </Select> */}
               </div>
             )}
             </h2>
@@ -1082,7 +1084,7 @@ export default function ChatArea({
                 role="assistant"
                 content={
                   tutorMode === "knowledge" && selectedKB
-                    ? `Hello! I'm your knowledge base tutor. I'll help you understand the content from "${knowledgeBases.find(kb => kb.id === selectedKB)?.name}". Ask me any questions about the uploaded documents and I'll provide context-aware responses based only on that content.`
+                    ? `Hello! I'm your friendly knowledge base tutor for "${knowledgeBases.find(kb => kb.id === selectedKB)?.name}". I can help you with questions about the uploaded documents, and I'm also happy to chat casually! Feel free to ask me anything about the content, or just say hi! 😊`
                     : `Hello! I'm your IB Mathematics tutor. I can help you with Math ${ibSubject} ${ibLevel} topics. Feel free to ask me any questions about:
 
 • Algebra and functions
@@ -1117,8 +1119,8 @@ What would you like to work on today?`
             />
           ))}
 
-          {/* Enhanced Streaming Message */}
-          {isStreaming && (
+          {/* Enhanced Streaming Message - Only for IB Math Tutor */}
+          {isStreaming && tutorMode === "ib" && (
             <MessageBubble
               role="assistant"
               content={streamingMessage}
@@ -1131,24 +1133,40 @@ What would you like to work on today?`
           )}
 
           {/* Enhanced Typing Indicator */}
-          {isStreaming && !streamingMessage && (
+          {isStreaming && (tutorMode === "knowledge" || !streamingMessage) && (
             <div className="flex items-start space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
-                <Brain className="w-5 h-5 text-white animate-pulse" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg ${
+                tutorMode === "knowledge" 
+                  ? "bg-gradient-to-r from-blue-500 to-purple-600" 
+                  : "bg-gradient-to-r from-indigo-500 to-blue-600"
+              }`}>
+                {tutorMode === "knowledge" ? (
+                  <Database className="w-5 h-5 text-white animate-pulse" />
+                ) : (
+                  <Brain className="w-5 h-5 text-white animate-pulse" />
+                )}
               </div>
               <div className="bg-white rounded-2xl px-6 py-4 shadow-lg border border-gray-200">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                  <div className={`w-2 h-2 rounded-full animate-bounce ${
+                    tutorMode === "knowledge" ? "bg-blue-400" : "bg-indigo-400"
+                  }`}></div>
                   <div
-                    className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                    className={`w-2 h-2 rounded-full animate-bounce ${
+                      tutorMode === "knowledge" ? "bg-blue-400" : "bg-indigo-400"
+                    }`}
                     style={{ animationDelay: "0.1s" }}
                   ></div>
                   <div
-                    className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                    className={`w-2 h-2 rounded-full animate-bounce ${
+                      tutorMode === "knowledge" ? "bg-blue-400" : "bg-indigo-400"
+                    }`}
                     style={{ animationDelay: "0.2s" }}
                   ></div>
-                  <span className="text-indigo-600 text-sm font-medium ml-3">
-                    Tutor is thinking...
+                  <span className={`text-sm font-medium ml-3 ${
+                    tutorMode === "knowledge" ? "text-blue-600" : "text-indigo-600"
+                  }`}>
+                    {tutorMode === "knowledge" ? "Searching knowledge base..." : "Tutor is thinking..."}
                   </span>
                 </div>
               </div>
@@ -1169,7 +1187,7 @@ What would you like to work on today?`
 
               handleSendMessage(trimmed);
             }}
-            disabled={sendMessage.isPending || isStreaming || isUsageLimitReached() || isLoadingKB}
+            disabled={ isUsageLimitReached()}
             sessionId={tutorMode === "ib" ? currentSessionId : kbSessionId}
           />
         </div>

@@ -52,7 +52,7 @@ export default function MessageInput({ onSendMessage, disabled, sessionId }: Mes
                 onClick={() => window.location.href = '/pricing'}
                 className="ml-1 underline hover:no-underline"
               >
-                Upgrade your plan
+                Upgrade your plan 
               </button> 
               to continue chatting.
             </span>

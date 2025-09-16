@@ -69,13 +69,13 @@ const tutorMessage = async (req: any, res: any) => {
     // Find or create session
     let session;
     if (sessionId) {
-      const { default: TutorSession } = await import('../models/TutorSession.js');
+      const { default: TutorSession } = await import('../models/TutorSession');
       session = await TutorSession.findById(sessionId);
       if (!session || session.userId !== userId) {
         return res.status(404).json({ error: "Session not found" });
       }
     } else {
-      const { default: TutorSession } = await import('../models/TutorSession.js');
+      const { default: TutorSession } = await import('../models/TutorSession');
       session = new TutorSession({
         userId,
         ibSubject,
@@ -86,7 +86,7 @@ const tutorMessage = async (req: any, res: any) => {
     }
 
     // Get conversation history
-    const { default: Message } = await import('../models/Message.js');
+    const { default: Message } = await import('../models/Message');
     const recentMessages = await Message.find({ sessionId: session._id })
       .sort({ createdAt: -1 })
       .limit(10);

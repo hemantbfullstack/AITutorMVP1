@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon",
     "dev:mongodb": "cross-env NODE_ENV=development nodemon server/indexMongo.ts",
+    "dev:replit": "cross-env NODE_ENV=development nodemon server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:mongodb": "vite build && esbuild server/indexMongo.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",

@@ -144,14 +144,46 @@ router.post("/message", async (req: any, res: any) => {
 
     // Generate response
     let response: string;
-    if (!hasRelevantContext || context.length === 0) {
-      console.log("❌ No relevant context found");
+    
+    // Check if this is a casual conversation (greetings, how are you, etc.)
+    const isCasualConversation = /^(hi|hello|hey|good morning|good afternoon|good evening|how are you|how's it going|what's up|thanks|thank you|bye|goodbye|see you|nice to meet you|pleasure|how do you do|good to see you|great to meet you|howdy|sup|what's happening|how's your day|how's everything|what's new|how's life)/i.test(message.trim());
+    
+    if (isCasualConversation) {
+      console.log("💬 Handling casual conversation");
+      const messages = [
+        {
+          role: "system",
+          content: `You are a friendly AI tutor specialized in the knowledge base "${chatSession.knowledgeBaseId.name}". 
+
+You can handle both casual conversation and knowledge-based questions:
+
+FOR CASUAL CONVERSATION (greetings, how are you, etc.):
+- Be warm, friendly, and conversational
+- Keep responses brief and natural
+- Mention that you're ready to help with questions about the knowledge base
+- Examples: "Hi! I'm doing great, thank you! I'm here to help you with any questions about ${chatSession.knowledgeBaseId.name}. What would you like to know?"
+
+FOR KNOWLEDGE QUESTIONS:
+- ONLY use information from the provided "Context from knowledge base"
+- If no relevant context is found, say: "I don't have specific information about that in my knowledge base, but I'd be happy to help with questions about ${chatSession.knowledgeBaseId.name}."
+- Use clear, structured explanations (steps, bullet points, equations)
+- Keep answers concise but educational
+
+Context from knowledge base:
+${context}`,
+        },
+        { role: "user", content: message },
+      ];
+
+      response = await generateResponse(messages);
+    } else if (!hasRelevantContext || context.length === 0) {
+      console.log("❌ No relevant context found for knowledge question");
       if (!pineconeAvailable) {
         response =
-          "Sorry, I don't have this information in my knowledge base. Vector search is currently unavailable (Pinecone not configured).";
+          "Sorry, I don't have this information in my knowledge base. Vector search is currently unavailable (Pinecone not configured). However, I'm happy to chat about other topics or help with questions about the available content.";
       } else {
         response =
-          "Sorry, I don't have this information in my knowledge base.";
+          `I don't have specific information about that in my knowledge base "${chatSession.knowledgeBaseId.name}". However, I'm happy to help with questions about the content that is available, or we can have a casual conversation!`;
       }
     } else {
       console.log("✅ Generating response with context");
@@ -163,8 +195,7 @@ router.post("/message", async (req: any, res: any) => {
           CRITICAL INSTRUCTIONS:
           - ONLY answer using the provided "Context from knowledge base".
           - If context does not cover it, reply: 
-            "Sorry, I don't have information about this topic in my knowledge base."
-          - Do NOT use outside knowledge.
+            "I don't have specific information about that in my knowledge base, but I'd be happy to help with questions about ${chatSession.knowledgeBaseId.name}."
           - Use clear, structured explanations (steps, bullet points, equations).
           - Keep answers concise but educational.
           

@@ -12,7 +12,11 @@ const app = express();
 // Enable CORS
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] // Add your production domain
+    ? [
+        process.env.CORS_ORIGIN || 'https://your-repl-domain.replit.dev',
+        `https://${process.env.REPLIT_DOMAINS}`,
+        `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      ].filter(Boolean)
     : ['http://localhost:5173', 'http://localhost:3000'], // Vite dev server
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const MessageSchema = new mongoose.Schema({
   sessionId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'TutorSession'
   },
