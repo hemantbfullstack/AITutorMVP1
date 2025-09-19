@@ -9,7 +9,7 @@ import { initializePinecone } from "./config/pinecone.js";
 
 const app = express();
 
-// Enable CORS with better Replit support
+// CORS configuration for local development and custom domain deployment
 const corsOptions = {
   origin: function (origin: string | undefined, callback: Function) {
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -17,30 +17,23 @@ const corsOptions = {
     
     const allowedOrigins = process.env.NODE_ENV === 'production' 
       ? [
-          process.env.CORS_ORIGIN,
-          `https://${process.env.REPLIT_DOMAINS}`,
-          `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`,
-          // Add common Replit patterns
-          /^https:\/\/.*\.replit\.dev$/,
-          /^https:\/\/.*\.repl\.co$/,
-          /^https:\/\/.*\.repl\.it$/
+          process.env.CORS_ORIGIN, // Your custom domain
+          'https://yourdomain.com', // Placeholder for your real domain
+          'https://www.yourdomain.com' // Placeholder for www subdomain
         ].filter(Boolean)
       : [
-          'http://localhost:5173', 
-          'http://localhost:3000',
-          'http://localhost:5000',
-          // Allow Replit dev origins
-          /^https:\/\/.*\.replit\.dev$/,
-          /^https:\/\/.*\.repl\.co$/,
-          /^https:\/\/.*\.repl\.it$/
+          'http://localhost:3000', // React dev server
+          'http://localhost:5173', // Vite dev server
+          'http://localhost:5000', // Express server
+          'http://127.0.0.1:3000',
+          'http://127.0.0.1:5173',
+          'http://127.0.0.1:5000'
         ];
     
     // Check if origin matches any allowed pattern
     const isAllowed = allowedOrigins.some(allowedOrigin => {
       if (typeof allowedOrigin === 'string') {
         return origin === allowedOrigin;
-      } else if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
       }
       return false;
     });
@@ -61,9 +54,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Fallback CORS for Replit development (more permissive)
-if (process.env.REPL_ID || process.env.REPL_SLUG) {
-  console.log('Replit environment detected, enabling fallback CORS');
+// Additional CORS headers for development
+if (process.env.NODE_ENV === 'development') {
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
@@ -88,8 +80,9 @@ app.get('/api/cors-test', (req, res) => {
     origin: req.headers.origin,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    replId: process.env.REPL_ID,
-    replSlug: process.env.REPL_SLUG
+    allowedOrigins: process.env.NODE_ENV === 'production' 
+      ? [process.env.CORS_ORIGIN, 'https://yourdomain.com', 'https://www.yourdomain.com'].filter(Boolean)
+      : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000']
   });
 });
 
@@ -152,8 +145,8 @@ app.use((req, res, next) => {
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  // Use IPv4 localhost for local development, 0.0.0.0 for Replit
-  const host = process.env.REPLIT_DOMAINS || process.env.REPL_ID ? "0.0.0.0" : "127.0.0.1";
+  // Use localhost for local development, 0.0.0.0 for production deployment
+  const host = process.env.NODE_ENV === 'production' ? "0.0.0.0" : "127.0.0.1";
   
   server.listen(port, host, () => {
     log(`serving on ${host}:${port}`);

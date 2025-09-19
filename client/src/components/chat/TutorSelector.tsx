@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -178,27 +179,29 @@ export default function TutorSelector({ selectedVoiceId, onVoiceChange, classNam
       <Button
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 h-auto hover:bg-gray-50 transition-all duration-200 hover:scale-105"
+        className="flex items-center gap-2 px-2 py-1 h-auto hover:bg-gray-50 transition-all duration-200 hover:scale-105 text-xs"
       >
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-lg ${getTutorStyle(selectedTutor)} animate-pulse`}>
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-sm ${getTutorStyle(selectedTutor)}`}>
           {getTutorImage(selectedTutor)}
         </div>
         <div className="text-left">
-          <div className="font-medium text-sm transition-all duration-200 hover:text-blue-600">{selectedTutor.name}</div>
+          <div className="font-medium text-xs transition-all duration-200 hover:text-blue-600">{selectedTutor.name}</div>
         </div>
-        <Volume2 className="w-4 h-4 ml-2 transition-all duration-200 hover:scale-110" />
+        <Volume2 className="w-3 h-3 ml-1 transition-all duration-200 hover:scale-110" />
       </Button>
 
       {/* Facebook-style Popup */}
-      {isOpen && (
+      {isOpen && createPortal(
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center animate-in fade-in-0 duration-300"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center animate-in fade-in-0 duration-300"
+          style={{ zIndex: 99999, paddingTop: '80px' }}
           onClick={() => setIsOpen(false)}
         >
           <div 
             ref={popupRef}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300 ease-out scale-100 animate-in fade-in-0 zoom-in-95 border border-gray-100"
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300 ease-out scale-100 animate-in fade-in-0 zoom-in-95 border border-gray-100 max-h-[calc(100vh-12rem)] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
+            style={{ marginTop: '20px' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -305,7 +308,8 @@ export default function TutorSelector({ selectedVoiceId, onVoiceChange, classNam
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

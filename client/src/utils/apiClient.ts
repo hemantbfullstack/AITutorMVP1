@@ -1,9 +1,8 @@
 import axios from 'axios';
 import { TokenManager } from './tokenManager';
 
-// In Replit, frontend and backend run on the same domain
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (window.location.hostname.includes('replit') ? '' : 'http://localhost:5000');
+// API base URL for local development and production
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Create axios instance
 export const apiClient = axios.create({
@@ -18,8 +17,12 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = TokenManager.getToken();
+    console.log('API Request:', config.url, 'Token available:', !!token);
     if (token && !TokenManager.isTokenExpired(token)) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Authorization header added');
+    } else {
+      console.log('No valid token available');
     }
     return config;
   },
@@ -30,8 +33,12 @@ apiClient.interceptors.request.use(
 
 // Response interceptor to handle token expiration
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', response.config.url, 'Status:', response.status);
+    return response;
+  },
   (error) => {
+    console.error('API Error:', error.config?.url, 'Status:', error.response?.status, 'Message:', error.message);
     if (error.response?.status === 401) {
       // Token expired or invalid, clear it
       TokenManager.removeToken();

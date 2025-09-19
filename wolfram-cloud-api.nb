@@ -1,0 +1,53 @@
+(* Wolfram Cloud APIFunction for Image Analysis *)
+(* This script creates an API function that can be deployed to Wolfram Cloud *)
+
+(* Create the APIFunction for image analysis *)
+api = CloudDeploy[
+  APIFunction[{"img" -> "Image"},
+    Module[{analysis, result},
+      (* Perform comprehensive image analysis *)
+      analysis = <|
+        "ImageIdentify" -> ImageIdentify[#img],
+        "EdgeDetect" -> EdgeDetect[#img],
+        "TextRecognize" -> TextRecognize[#img],
+        "ImageDimensions" -> ImageDimensions[#img],
+        "ImageType" -> ImageType[#img],
+        "ColorSpace" -> ColorSpace[#img]
+      |>;
+      
+      (* Try to find peaks in the image data for graph analysis *)
+      If[ImageType[#img] === "Grayscale",
+        peaks = FindPeaks[ImageData[#img][[All, 1]]];
+        analysis = Append[analysis, "FindPeaks" -> peaks];
+      ];
+      
+      (* Create a visualization of the analysis *)
+      visualization = GraphicsGrid[{
+        {#img, EdgeDetect[#img]},
+        {ImageIdentify[#img], 
+         If[ImageType[#img] === "Grayscale", 
+           ListPlot[ImageData[#img][[All, 1]], PlotLabel -> "Image Data"], 
+           "Not a grayscale image"
+         ]}
+      }, ImageSize -> 400];
+      
+      (* Return the analysis results *)
+      <|
+        "analysis" -> analysis,
+        "visualization" -> ExportString[visualization, "PNG", "Base64" -> True],
+        "success" -> True
+      |>
+    ] &,
+    "JSON"
+  ],
+  Permissions -> "Public",
+  CloudObjectName -> "ImageAnalysis"
+];
+
+(* Print the API URL *)
+Print["API deployed at: ", api];
+
+(* Test the API with a sample image *)
+testImage = ExampleData[{"TestImage", "Lena"}];
+testResult = api[<|"img" -> testImage|>];
+Print["Test result: ", testResult];

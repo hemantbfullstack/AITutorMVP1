@@ -1,6 +1,8 @@
 // server/middleware/checkUsage.ts
 import { Plan, plans } from "@shared/constants";
 import { Request, Response, NextFunction } from "express";
+import { User } from "./models";
+
 
 
 
@@ -14,8 +16,12 @@ export const checkUsage = async (
   next: NextFunction
 ) => {
   try {
-    const user = req.user;
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const userInfo = req.user;
+    if (!userInfo) return res.status(401).json({ error: "Unauthorized" });
+
+    // Fetch the actual user document from database
+    const user = await User.findById(userInfo.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     const plan: Plan | undefined = plans.find((p) => p.id === user.planId);
     if (!plan) return res.status(400).json({ error: "Invalid plan" });
@@ -42,6 +48,18 @@ export const checkUsage = async (
       user.usageResetAt = getNextReset(plan.interval);
     }
     await user.save();
+
+    // Update the user info in the request for consistency
+    req.user = {
+      id: user._id.toString(),
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      planId: user.planId,
+      profileImageUrl: user.profileImageUrl,
+      usageCount: user.usageCount,
+    };
 
     // Return updated usage count for client sync
     res.locals.updatedUsageCount = user.usageCount;

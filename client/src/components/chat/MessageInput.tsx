@@ -1,17 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Crown, AlertCircle } from 'lucide-react';
+import { Crown, AlertCircle, Camera, X, Upload } from 'lucide-react';
 
 interface MessageInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, image?: File) => void;
   disabled?: boolean;
   sessionId?: string | null;
 }
 
 export default function MessageInput({ onSendMessage, disabled, sessionId }: MessageInputProps) {
   const [message, setMessage] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -22,10 +25,50 @@ export default function MessageInput({ onSendMessage, disabled, sessionId }: Mes
   }, [message]);
 
   const handleSend = () => {
-    if (message.trim() && !disabled) {
-      onSendMessage(message.trim());
+    if ((message.trim() || selectedImage) && !disabled) {
+      onSendMessage(message.trim(), selectedImage || undefined);
       setMessage("");
+      setSelectedImage(null);
+      setImagePreview(null);
     }
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (JPG, PNG)');
+      return;
+    }
+
+    // Validate file size (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image upload failed: Please use JPG/PNG under 2MB.');
+      return;
+    }
+
+    setSelectedImage(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImageUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -60,11 +103,42 @@ export default function MessageInput({ onSendMessage, disabled, sessionId }: Mes
         </div>
       )}
       
+      {/* Image Preview */}
+      {imagePreview && (
+        <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <img 
+                src={imagePreview} 
+                alt="Preview" 
+                className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-700">
+                  {selectedImage?.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {(selectedImage?.size || 0 / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveImage}
+              className="text-gray-500 hover:text-red-500"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-end space-x-3">
         <div className="flex-1 relative">
           <Textarea
             ref={textareaRef}
-            placeholder="Ask your IB Math question here..."
+            placeholder="Ask your educational question here... (or upload an image)"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -80,9 +154,31 @@ export default function MessageInput({ onSendMessage, disabled, sessionId }: Mes
             </span>
           </div>
         </div>
+        
+        {/* Image Upload Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleImageUploadClick}
+          disabled={disabled || !!selectedImage}
+          className="px-3 py-2"
+          title="Upload Image (JPG/PNG, max 2MB)"
+        >
+          <Camera className="w-4 h-4" />
+        </Button>
+
+        {/* Hidden File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+
         <Button 
           onClick={handleSend}
-          disabled={disabled || !message.trim() || isOverLimit}
+          disabled={disabled || (!message.trim() && !selectedImage) || isOverLimit}
           className="bg-primary hover:bg-blue-700 px-6"
           data-testid="button-send"
         >

@@ -1,10 +1,9 @@
-export type PlanInterval = "daily" | "monthly" | "yearly" | "lifetime";
-
+// Frontend plan constants - should match server/shared/constants.ts
 export interface Plan {
   id: string;
   name: string;
   limit: number | null;
-  interval: PlanInterval;
+  interval: "daily" | "monthly" | "yearly" | "lifetime";
   price: number;
   currency: string;
   features: string[];
@@ -12,13 +11,12 @@ export interface Plan {
   stripePriceId?: string;
   popular?: boolean;
   badge?: string;
-  // New fields for enhanced plan features
-  imageLimit?: number | null; // null means unlimited
+  imageLimit?: number | null;
   includesVoice?: boolean;
   includesImages?: boolean;
-  groupAccess?: number; // number of students allowed
+  groupAccess?: number;
   prioritySupport?: boolean;
-  paperGeneration?: number | null; // null means unlimited
+  paperGeneration?: number | null;
 }
 
 export const plans: Plan[] = [
@@ -145,44 +143,19 @@ export const plans: Plan[] = [
   }
 ];
 
-// Add-on plans for extra features
-export const addOnPlans: Plan[] = [
-  {
-    id: "extra-images",
-    name: "Extra Images",
-    limit: 50,
-    interval: "monthly",
-    price: 199,
-    currency: "INR",
-    features: [
-      "50 additional images",
-      "Valid for current month"
-    ],
-    description: "Get more images when you need them",
-    includesVoice: false,
-    includesImages: true,
-    imageLimit: 50,
-    groupAccess: 1,
-    prioritySupport: false,
-    paperGeneration: 0
-  },
-  {
-    id: "extra-questions",
-    name: "Extra Questions",
-    limit: 500,
-    interval: "monthly",
-    price: 399,
-    currency: "INR",
-    features: [
-      "500 additional questions",
-      "Valid for current month"
-    ],
-    description: "Get more questions when you need them",
-    includesVoice: true,
-    includesImages: false,
-    imageLimit: 0,
-    groupAccess: 1,
-    prioritySupport: false,
-    paperGeneration: 0
-  }
-];
+// Helper functions for credit management
+export const getPlanById = (planId: string): Plan | undefined => {
+  return plans.find(plan => plan.id === planId);
+};
+
+export const getRemainingCredits = (user: { planId: string; usageCount: number }): number => {
+  const plan = getPlanById(user.planId);
+  if (!plan || !plan.limit) return 0;
+  return Math.max(0, plan.limit - user.usageCount);
+};
+
+export const isUsageLimitReached = (user: { planId: string; usageCount: number }): boolean => {
+  const plan = getPlanById(user.planId);
+  if (!plan || !plan.limit) return false;
+  return user.usageCount >= plan.limit;
+};

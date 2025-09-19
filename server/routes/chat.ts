@@ -1,31 +1,33 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import KnowledgeBase from '../models/KnowledgeBase.js';
+import EducationalCriteria from '../models/KnowledgeBase.js';
 import ChatSession from '../models/ChatSession.js';
 import { generateEmbedding, generateResponse } from '../config/openai.js';
 import { getIndex } from '../config/pinecone.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { checkUsage } from '../checkUsageMiddleware.js';
 
 const router = express.Router();
 
 // Create new chat session
-router.post('/session', async (req: any, res: any) => {
+router.post('/session', authenticateToken, async (req: any, res: any) => {
   try {
-    const { knowledgeBaseId } = req.body;
+    const { criteriaId } = req.body;
 
-    if (!knowledgeBaseId) {
-      return res.status(400).json({ error: 'Knowledge base ID is required' });
+    if (!criteriaId) {
+      return res.status(400).json({ error: 'Educational criteria ID is required' });
     }
 
-    // Verify knowledge base exists
-    const knowledgeBase = await KnowledgeBase.findById(knowledgeBaseId);
-    if (!knowledgeBase) {
-      return res.status(404).json({ error: 'Knowledge base not found' });
+    // Verify educational criteria exists
+    const criteria = await EducationalCriteria.findById(criteriaId);
+    if (!criteria) {
+      return res.status(404).json({ error: 'Educational criteria not found' });
     }
 
     const sessionId = uuidv4();
     const chatSession = new ChatSession({
       sessionId,
-      knowledgeBaseId,
+      criteriaId,
       messages: []
     });
 
@@ -35,8 +37,11 @@ router.post('/session', async (req: any, res: any) => {
       success: true,
       session: {
         sessionId,
-        knowledgeBaseId,
-        knowledgeBaseName: knowledgeBase.name,
+        criteriaId,
+        criteriaName: criteria.name,
+        educationalBoard: criteria.educationalBoard,
+        subject: criteria.subject,
+        level: criteria.level,
         createdAt: chatSession.createdAt
       }
     });
@@ -46,7 +51,7 @@ router.post('/session', async (req: any, res: any) => {
   }
 });
 
-router.post("/message", async (req: any, res: any) => {
+router.post("/message", authenticateToken, checkUsage, async (req: any, res: any) => {
   try {
     const { sessionId, message, isVoice = false } = req.body;
 
@@ -58,25 +63,25 @@ router.post("/message", async (req: any, res: any) => {
 
     // Get chat session
     const chatSession = await ChatSession.findOne({ sessionId }).populate(
-      "knowledgeBaseId"
+      "criteriaId"
     );
     if (!chatSession) {
       return res.status(404).json({ error: "Chat session not found" });
     }
 
     console.log(
-      "🔍 Searching for knowledge base:",
-      chatSession.knowledgeBaseId._id.toString()
+      "🎯 Using educational criteria:",
+      chatSession.criteriaId._id.toString()
     );
     console.log("📝 User message:", message);
 
     const startTime = Date.now();
 
-    // Generate embedding for user message
+    // Generate embedding for user message to find relevant instructional criteria
     const queryEmbedding = await generateEmbedding(message);
     console.log("🧮 Embedding length:", queryEmbedding.length);
 
-    // Query Pinecone
+    // Query Pinecone for instructional criteria
     let searchResponse: any = { matches: [] };
     let pineconeAvailable = false;
 
@@ -86,16 +91,16 @@ router.post("/message", async (req: any, res: any) => {
       if (index && typeof index.query === "function") {
         searchResponse = await index.query({
           vector: queryEmbedding,
-          topK: 10,
+          topK: 5, // Get fewer, more focused instructional criteria
           includeMetadata: true,
           filter: {
-            knowledgeBaseId: chatSession.knowledgeBaseId._id.toString(),
+            criteriaId: chatSession.criteriaId._id.toString(),
           },
         });
 
         pineconeAvailable = true;
         console.log(
-          "🔍 Pinecone search found",
+          "🎯 Found instructional criteria:",
           searchResponse.matches?.length || 0,
           "matches"
         );
@@ -104,45 +109,31 @@ router.post("/message", async (req: any, res: any) => {
       console.warn("⚠️ Pinecone search failed:", err);
     }
 
-    // Check search results
-    console.log(
-      "🔍 Matches found:",
-      searchResponse.matches?.length || 0
-    );
-    if (searchResponse.matches?.length > 0) {
-      console.log(
-        "📊 Scores:",
-        searchResponse.matches.map((m: any) => m.score)
-      );
-      console.log("📄 First match metadata:", searchResponse.matches[0].metadata);
-    }
-
-    // Build context from matches
-    let context = "";
-    let hasRelevantContext = false;
+    // Build instructional context from criteria matches
+    let instructionalContext = "";
+    let hasRelevantCriteria = false;
 
     if (searchResponse.matches && searchResponse.matches.length > 0) {
       const relevantMatches = searchResponse.matches.filter(
-        (m: any) => m.score > 0.05 // very low threshold to catch any matches
+        (m: any) => m.score > 0.3 // Higher threshold for instructional relevance
       );
 
-      console.log("✅ Relevant matches:", relevantMatches.length);
+      console.log("✅ Relevant instructional criteria:", relevantMatches.length);
 
       if (relevantMatches.length > 0) {
-        context = relevantMatches
+        instructionalContext = relevantMatches
           .map((m: any) => m.metadata?.text || "")
           .join("\n\n");
-        hasRelevantContext = true;
-        console.log("📚 Context length:", context.length);
-        console.log("📄 Full context:", context);
-        console.log("📄 Context preview:", context.substring(0, 200) + "...");
+        hasRelevantCriteria = true;
+        console.log("📚 Instructional context length:", instructionalContext.length);
+        console.log("📄 Instructional context preview:", instructionalContext.substring(0, 200) + "...");
       } else {
-        console.log("❌ No matches above threshold 0.05");
+        console.log("❌ No instructional criteria above threshold 0.3");
         console.log("📊 All scores:", searchResponse.matches.map((m: any) => m.score));
       }
     }
 
-    // Generate response
+    // Generate response using instructional criteria as guidance
     let response: string;
     
     // Check if this is a casual conversation (greetings, how are you, etc.)
@@ -153,54 +144,46 @@ router.post("/message", async (req: any, res: any) => {
       const messages = [
         {
           role: "system",
-          content: `You are a friendly AI tutor specialized in the knowledge base "${chatSession.knowledgeBaseId.name}". 
+          content: `You are a friendly AI tutor specialized in ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} education. 
 
-You can handle both casual conversation and knowledge-based questions:
+You can handle both casual conversation and educational questions:
 
 FOR CASUAL CONVERSATION (greetings, how are you, etc.):
 - Be warm, friendly, and conversational
 - Keep responses brief and natural
-- Mention that you're ready to help with questions about the knowledge base
-- Examples: "Hi! I'm doing great, thank you! I'm here to help you with any questions about ${chatSession.knowledgeBaseId.name}. What would you like to know?"
+- Mention that you're ready to help with educational questions
+- Examples: "Hi! I'm doing great, thank you! I'm here to help you with ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} questions. What would you like to learn about?"
 
-FOR KNOWLEDGE QUESTIONS:
-- ONLY use information from the provided "Context from knowledge base"
-- If no relevant context is found, say: "I don't have specific information about that in my knowledge base, but I'd be happy to help with questions about ${chatSession.knowledgeBaseId.name}."
-- Use clear, structured explanations (steps, bullet points, equations)
-- Keep answers concise but educational
+FOR EDUCATIONAL QUESTIONS:
+- Use your knowledge of ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} curriculum
+- Follow the instructional guidelines and teaching approaches from the educational criteria
+- Provide clear, structured explanations (steps, bullet points, equations)
+- Keep answers educational and aligned with the curriculum standards
 
-Context from knowledge base:
-${context}`,
+Educational Criteria Guidelines:
+${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} teaching approaches."}`,
         },
         { role: "user", content: message },
       ];
 
       response = await generateResponse(messages);
-    } else if (!hasRelevantContext || context.length === 0) {
-      console.log("❌ No relevant context found for knowledge question");
-      if (!pineconeAvailable) {
-        response =
-          "Sorry, I don't have this information in my knowledge base. Vector search is currently unavailable (Pinecone not configured). However, I'm happy to chat about other topics or help with questions about the available content.";
-      } else {
-        response =
-          `I don't have specific information about that in my knowledge base "${chatSession.knowledgeBaseId.name}". However, I'm happy to help with questions about the content that is available, or we can have a casual conversation!`;
-      }
     } else {
-      console.log("✅ Generating response with context");
+      console.log("🎓 Generating educational response with criteria guidance");
       const messages = [
         {
           role: "system",
-          content: `You are an AI tutor specialized in the knowledge base "${chatSession.knowledgeBaseId.name}". 
-             
-          CRITICAL INSTRUCTIONS:
-          - ONLY answer using the provided "Context from knowledge base".
-          - If context does not cover it, reply: 
-            "I don't have specific information about that in my knowledge base, but I'd be happy to help with questions about ${chatSession.knowledgeBaseId.name}."
-          - Use clear, structured explanations (steps, bullet points, equations).
-          - Keep answers concise but educational.
-          
-          Context from knowledge base:
-          ${context}`,
+          content: `You are an AI tutor specialized in ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} education.
+
+CRITICAL INSTRUCTIONS:
+- Use your knowledge of ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} curriculum
+- Follow the instructional guidelines and teaching approaches provided below
+- Provide clear, structured explanations (steps, bullet points, equations)
+- Keep answers educational and aligned with the curriculum standards
+- Use appropriate terminology and concepts for ${chatSession.criteriaId.level} level
+- Follow ${chatSession.criteriaId.educationalBoard} assessment criteria and command terms
+
+Educational Criteria Guidelines:
+${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} teaching approaches and curriculum standards."}`,
         },
         { role: "user", content: message },
       ];
@@ -216,7 +199,7 @@ ${context}`,
       content: message,
       isVoice,
       metadata: {
-        knowledgeBase: chatSession.knowledgeBaseId.name,
+        criteria: chatSession.criteriaId.name,
         responseTime: 0,
       },
     });
@@ -225,10 +208,10 @@ ${context}`,
       role: "assistant",
       content: response,
       metadata: {
-        knowledgeBase: chatSession.knowledgeBaseId.name,
+        criteria: chatSession.criteriaId.name,
         tokensUsed: response.length,
         responseTime,
-        contextUsed: hasRelevantContext,
+        criteriaUsed: hasRelevantCriteria,
       },
     });
 
@@ -241,7 +224,7 @@ ${context}`,
         content: response,
         sessionId,
         responseTime,
-        contextUsed: hasRelevantContext,
+        criteriaUsed: hasRelevantCriteria,
         timestamp: new Date().toISOString(),
       },
     });

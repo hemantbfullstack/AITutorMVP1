@@ -7,18 +7,22 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { authService, type User } from "@/services/authService";
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (data: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUser = useCallback(async () => {
@@ -47,11 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Auth error:', error);
       setUser(null);
+      // Clear invalid token
+      localStorage.removeItem('auth_token');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Initialize user on mount
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
@@ -73,9 +80,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [fetchUser]);
 
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      const userData = await authService.login({ email, password });
+      setUser(userData);
+    } catch (error) {
+      console.error("Login failed:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const signup = useCallback(async (data: { email: string; password: string; firstName: string; lastName: string }) => {
+    try {
+      setIsLoading(true);
+      const userData = await authService.signup(data);
+      setUser(userData);
+    } catch (error) {
+      console.error("Signup failed:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
-      localStorage.removeItem('auth_token');
+      await authService.logout();
       setUser(null);
       // Redirect to login or home page
       window.location.href = '/login';
@@ -84,14 +117,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    await fetchUser();
+  }, [fetchUser]);
+
   const value = useMemo(
     () => ({
       user,
       isLoading,
       isAuthenticated: !!user,
+      login,
+      signup,
       logout,
+      refreshUser,
     }),
-    [user, isLoading, logout],
+    [user, isLoading, login, signup, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

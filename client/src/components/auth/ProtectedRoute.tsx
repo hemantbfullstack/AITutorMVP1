@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/mainLayout";
 
 interface ProtectedRouteProps {

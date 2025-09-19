@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { InlineMath, BlockMath } from "react-katex";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface GeneratedPaper {
   id: string;
@@ -205,12 +205,12 @@ export default function Papers() {
   const [downloadLoading, setDownloadLoading] = useState(false);
 
   const downloadPDF = async ({
-    paperId,
-    type,
-  }: {
-    paperId: string;
-    type: "paper" | "markscheme";
-  }) => {
+      paperId,
+      type,
+    }: {
+      paperId: string;
+      type: "paper" | "markscheme";
+    }) => {
     setDownloadLoading(true);
     try {
       const response = await fetch(`/api/papers/${paperId}/pdf`, {

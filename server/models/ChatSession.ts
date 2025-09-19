@@ -31,9 +31,9 @@ const ChatSessionSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  knowledgeBaseId: {
+  criteriaId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'KnowledgeBase',
+    ref: 'EducationalCriteria',
     required: true
   },
   messages: [MessageSchema],

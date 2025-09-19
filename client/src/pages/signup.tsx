@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation } from "wouter";
-import { authService } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,7 +35,7 @@ type LocalSignup = z.infer<typeof localSignupSchema>;
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const { signup, isLoading } = useAuth();
 
   const form = useForm<LocalSignup>({
     resolver: zodResolver(localSignupSchema),
@@ -48,35 +48,19 @@ export default function Signup() {
   });
 
   const onSubmit = async (data: LocalSignup) => {
-    setIsLoading(true);
     try {
-      const result = await authService.signup(data);
-      console.log('Signup successful, data:', result);
-      
-      // Trigger a custom event to notify AuthContext of token change
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'auth_token',
-        newValue: localStorage.getItem('auth_token'),
-        oldValue: null
-      }));
-
+      await signup(data);
       toast({
         title: "Success",
         description: "Account created successfully!",
       });
-
-      // Small delay to ensure state is updated before navigation
-      setTimeout(() => {
-        setLocation("/");
-      }, 100);
+      setLocation("/");
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Signup failed",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 

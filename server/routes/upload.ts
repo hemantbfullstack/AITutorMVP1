@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import KnowledgeBase from '../models/KnowledgeBase.js';
+import EducationalCriteria from '../models/KnowledgeBase.js';
 import { processFile, saveFile, deleteFile } from '../utils/fileProcessor.js';
 import { generateEmbedding } from '../config/openai.js';
 import { getIndex } from '../config/pinecone.js';
@@ -35,10 +35,14 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { knowledgeBaseName, knowledgeBaseId, description } = req.body;
+    const { criteriaName, criteriaId, description, educationalBoard, subject, level } = req.body;
     
-    if (!knowledgeBaseName && !knowledgeBaseId) {
-      return res.status(400).json({ error: 'Knowledge base name or ID is required' });
+    if (!criteriaName && !criteriaId) {
+      return res.status(400).json({ error: 'Educational criteria name or ID is required' });
+    }
+
+    if (!criteriaId && (!educationalBoard || !subject || !level)) {
+      return res.status(400).json({ error: 'Educational board, subject, and level are required for new criteria' });
     }
 
     // Process the uploaded file
@@ -140,30 +144,33 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
     
     console.log(`Successfully processed ${chunksWithEmbeddings.length} chunks`);
 
-    let knowledgeBase;
+    let criteria;
     
-    if (knowledgeBaseId) {
-      // Add to existing knowledge base
-      knowledgeBase = await KnowledgeBase.findById(knowledgeBaseId);
-      if (!knowledgeBase) {
+    if (criteriaId) {
+      // Add to existing educational criteria
+      criteria = await EducationalCriteria.findById(criteriaId);
+      if (!criteria) {
         await deleteFile(filePath);
-        return res.status(404).json({ error: 'Knowledge base not found' });
+        return res.status(404).json({ error: 'Educational criteria not found' });
       }
       
-      knowledgeBase.files.push({
+      criteria.files.push({
         filename,
         originalName,
         size,
         chunkCount: chunksWithEmbeddings.length
       });
       
-      knowledgeBase.totalChunks += chunksWithEmbeddings.length;
-      knowledgeBase.totalTokens += processedData.tokenCount;
+      criteria.totalChunks += chunksWithEmbeddings.length;
+      criteria.totalTokens += processedData.tokenCount;
     } else {
-      // Create new knowledge base
-      knowledgeBase = new KnowledgeBase({
-        name: knowledgeBaseName,
+      // Create new educational criteria
+      criteria = new EducationalCriteria({
+        name: criteriaName,
         description: description || '',
+        educationalBoard,
+        subject,
+        level,
         files: [{
           filename,
           originalName,
@@ -176,7 +183,7 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
     }
 
     try {
-      await knowledgeBase.save();
+      await criteria.save();
     } catch (error: any) {
       await deleteFile(filePath);
       if (error.message && error.message.includes('BSONObj size')) {
@@ -199,11 +206,14 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
         
         const PINECONE_BATCH_SIZE = 100; // Pinecone recommends batches of 100
         const vectors = chunksWithEmbeddings.map((chunk, i) => ({
-          id: `${knowledgeBase._id}_${filename}_${chunk.chunkIndex}`,
+          id: `${criteria._id}_${filename}_${chunk.chunkIndex}`,
           values: chunk.embedding,
           metadata: {
-            knowledgeBaseId: knowledgeBase._id.toString(),
-            knowledgeBaseName: knowledgeBase.name,
+            criteriaId: criteria._id.toString(),
+            criteriaName: criteria.name,
+            educationalBoard: criteria.educationalBoard,
+            subject: criteria.subject,
+            level: criteria.level,
             filename,
             chunkIndex: chunk.chunkIndex,
             text: chunk.text, // Store FULL text in Pinecone metadata
@@ -221,11 +231,11 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
         console.log('✅ All vectors stored in Pinecone successfully');
       } else {
         console.warn('⚠️ Pinecone not available - vectors not stored in vector database');
-        console.log('📝 Knowledge base saved to MongoDB only. To enable vector search, set up Pinecone API key.');
+        console.log('📝 Educational criteria saved to MongoDB only. To enable vector search, set up Pinecone API key.');
       }
     } catch (error) {
       console.warn('⚠️ Failed to store vectors in Pinecone:', error);
-      // Continue without Pinecone - the knowledge base will still be saved in MongoDB
+      // Continue without Pinecone - the educational criteria will still be saved in MongoDB
     }
 
     // Clean up uploaded file
@@ -233,13 +243,16 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
 
     res.json({
       success: true,
-      knowledgeBase: {
-        id: knowledgeBase._id,
-        name: knowledgeBase.name,
-        description: knowledgeBase.description,
-        totalChunks: knowledgeBase.totalChunks,
-        totalTokens: knowledgeBase.totalTokens,
-        files: knowledgeBase.files.map((file: any) => ({
+      criteria: {
+        id: criteria._id,
+        name: criteria.name,
+        description: criteria.description,
+        educationalBoard: criteria.educationalBoard,
+        subject: criteria.subject,
+        level: criteria.level,
+        totalChunks: criteria.totalChunks,
+        totalTokens: criteria.totalTokens,
+        files: criteria.files.map((file: any) => ({
           filename: file.filename,
           originalName: file.originalName,
           size: file.size,

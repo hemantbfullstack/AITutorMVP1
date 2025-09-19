@@ -1,6 +1,6 @@
 import express from 'express';
 import { getIndex } from '../config/pinecone.js';
-import KnowledgeBase from '../models/KnowledgeBase.js';
+import EducationalCriteria from '../models/KnowledgeBase.js';
 
 const router = express.Router();
 
@@ -50,11 +50,11 @@ router.post('/pinecone', async (req: any, res: any) => {
     // Create knowledge bases for each group
     for (const [kbName, vectors] of Object.entries(vectorsByKB)) {
       // Check if knowledge base already exists
-      let knowledgeBase = await KnowledgeBase.findOne({ name: kbName });
+      let knowledgeBase = await EducationalCriteria.findOne({ name: kbName });
       
       if (!knowledgeBase) {
         // Create new knowledge base
-        knowledgeBase = new KnowledgeBase({
+        knowledgeBase = new EducationalCriteria({
           name: kbName,
           description: description || `Imported from existing Pinecone data`,
           totalChunks: vectors.length,

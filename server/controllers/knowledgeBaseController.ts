@@ -1,11 +1,11 @@
-import KnowledgeBase from '../models/KnowledgeBase.js';
+import EducationalCriteria from '../models/KnowledgeBase.js';
 
 // Create new knowledge base
-const createKnowledgeBase = async (req: any, res: any) => {
+const createEducationalCriteria = async (req: any, res: any) => {
   try {
     const { name, description } = req.body;
 
-    const knowledgeBase = new KnowledgeBase({
+    const knowledgeBase = new EducationalCriteria({
       name,
       description
     });
@@ -23,7 +23,7 @@ const createKnowledgeBase = async (req: any, res: any) => {
 };
 
 // Get all knowledge bases
-const getKnowledgeBases = async (req: any, res: any) => {
+const getEducationalCriterias = async (req: any, res: any) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     
@@ -41,12 +41,12 @@ const getKnowledgeBases = async (req: any, res: any) => {
       ];
     }
 
-    const knowledgeBases = await KnowledgeBase.find(query)
+    const knowledgeBases = await EducationalCriteria.find(query)
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limitNum);
 
-    const total = await KnowledgeBase.countDocuments(query);
+    const total = await EducationalCriteria.countDocuments(query);
 
     res.json({
       knowledgeBases,
@@ -66,10 +66,10 @@ const getKnowledgeBases = async (req: any, res: any) => {
 };
 
 // Get knowledge base by ID
-const getKnowledgeBase = async (req: any, res: any) => {
+const getEducationalCriteria = async (req: any, res: any) => {
   try {
     const { id } = req.params;
-    const knowledgeBase = await KnowledgeBase.findById(id);
+    const knowledgeBase = await EducationalCriteria.findById(id);
 
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
@@ -83,12 +83,12 @@ const getKnowledgeBase = async (req: any, res: any) => {
 };
 
 // Update knowledge base
-const updateKnowledgeBase = async (req: any, res: any) => {
+const updateEducationalCriteria = async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
 
-    const knowledgeBase = await KnowledgeBase.findByIdAndUpdate(
+    const knowledgeBase = await EducationalCriteria.findByIdAndUpdate(
       id,
       { name, description },
       { new: true }
@@ -109,11 +109,11 @@ const updateKnowledgeBase = async (req: any, res: any) => {
 };
 
 // Delete knowledge base
-const deleteKnowledgeBase = async (req: any, res: any) => {
+const deleteEducationalCriteria = async (req: any, res: any) => {
   try {
     const { id } = req.params;
 
-    const knowledgeBase = await KnowledgeBase.findByIdAndDelete(id);
+    const knowledgeBase = await EducationalCriteria.findByIdAndDelete(id);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }
@@ -126,12 +126,12 @@ const deleteKnowledgeBase = async (req: any, res: any) => {
 };
 
 // Add file to knowledge base
-const addFileToKnowledgeBase = async (req: any, res: any) => {
+const addFileToEducationalCriteria = async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const { filename, originalName, size, chunks } = req.body;
 
-    const knowledgeBase = await KnowledgeBase.findById(id);
+    const knowledgeBase = await EducationalCriteria.findById(id);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }
@@ -161,11 +161,11 @@ const addFileToKnowledgeBase = async (req: any, res: any) => {
 };
 
 // Remove file from knowledge base
-const removeFileFromKnowledgeBase = async (req: any, res: any) => {
+const removeFileFromEducationalCriteria = async (req: any, res: any) => {
   try {
     const { id, fileId } = req.params;
 
-    const knowledgeBase = await KnowledgeBase.findById(id);
+    const knowledgeBase = await EducationalCriteria.findById(id);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }
@@ -198,7 +198,7 @@ const addChunksToFile = async (req: any, res: any) => {
     const { id, fileId } = req.params;
     const { chunks } = req.body;
 
-    const knowledgeBase = await KnowledgeBase.findById(id);
+    const knowledgeBase = await EducationalCriteria.findById(id);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }
@@ -225,11 +225,11 @@ const addChunksToFile = async (req: any, res: any) => {
 };
 
 // Get knowledge base statistics
-const getKnowledgeBaseStats = async (req: any, res: any) => {
+const getEducationalCriteriaStats = async (req: any, res: any) => {
   try {
-    const totalKnowledgeBases = await KnowledgeBase.countDocuments();
+    const totalEducationalCriterias = await EducationalCriteria.countDocuments();
 
-    const aggregatedStats = await KnowledgeBase.aggregate([
+    const aggregatedStats = await EducationalCriteria.aggregate([
       {
         $group: {
           _id: null,
@@ -242,17 +242,17 @@ const getKnowledgeBaseStats = async (req: any, res: any) => {
       }
     ]);
 
-    const recentKnowledgeBases = await KnowledgeBase.find()
+    const recentEducationalCriterias = await EducationalCriteria.find()
       .sort({ updatedAt: -1 })
       .limit(5)
       .select('name description totalFiles totalChunks totalTokens updatedAt');
 
     res.json({
       overview: {
-        totalKnowledgeBases,
+        totalEducationalCriterias,
         ...aggregatedStats[0]
       },
-      recentKnowledgeBases
+      recentEducationalCriterias
     });
   } catch (error) {
     console.error('Get knowledge base stats error:', error);
@@ -261,13 +261,13 @@ const getKnowledgeBaseStats = async (req: any, res: any) => {
 };
 
 export {
-  createKnowledgeBase,
-  getKnowledgeBases,
-  getKnowledgeBase,
-  updateKnowledgeBase,
-  deleteKnowledgeBase,
-  addFileToKnowledgeBase,
-  removeFileFromKnowledgeBase,
+  createEducationalCriteria,
+  getEducationalCriterias,
+  getEducationalCriteria,
+  updateEducationalCriteria,
+  deleteEducationalCriteria,
+  addFileToEducationalCriteria,
+  removeFileFromEducationalCriteria,
   addChunksToFile,
-  getKnowledgeBaseStats
+  getEducationalCriteriaStats
 };

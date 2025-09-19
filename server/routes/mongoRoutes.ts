@@ -1,7 +1,9 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 import { authenticateToken } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/roleAuth.js';
+import { checkUsage } from '../checkUsageMiddleware.js';
 
 // Import all controllers
 import * as userController from '../controllers/userController.js';
@@ -26,8 +28,24 @@ import voiceRoutes from './voice.js';
 import knowledgeBaseRoutes from './knowledgeBase.js';
 import uploadRoutes from './upload.js';
 import importRoutes from './import.js';
+import chatRoomRoutes from './chatRoutes.js';
 
 const router = express.Router();
+
+// Configure multer for image uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB limit
+  },
+  fileFilter: (req, file, cb: any) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // Rate limiters
 const tutorRateLimit = rateLimit({
@@ -121,7 +139,7 @@ router.route('/messages/:id')
   .put(authenticateToken, messageController.updateMessage)
   .delete(authenticateToken, messageController.deleteMessage);
 
-router.get('/messages/session/:sessionId', authenticateToken, messageController.getMessagesBySession);
+//router.get('/messages/session/:sessionId', authenticateToken, messageController.getMessagesBySession);
 
 // ============================================================================
 // CHAT SESSION ROUTES
@@ -141,7 +159,7 @@ router.get('/chat/sessions/user/:userId', authenticateToken, chatSessionControll
 // TUTOR ROUTES
 // ============================================================================
 router.post('/tutor/selftest', authenticateToken, tutorController.tutorSelfTest);
-router.post('/tutor/message', authenticateToken, tutorRateLimit, tutorController.tutorMessage);
+router.post('/tutor/message', authenticateToken, checkUsage, tutorRateLimit, tutorController.tutorMessage);
 
 // ============================================================================
 // MATH TOOLS ROUTES
@@ -161,6 +179,8 @@ router.post('/voice/tts', authenticateToken, ttsRateLimit, voiceController.textT
 router.get('/wolfram/selftest', wolframController.wolframSelfTest);
 router.post('/wolfram/simple', wolframController.wolframSimple);
 router.post('/wolfram/full', wolframController.wolframFull);
+router.post('/wolfram/image', upload.single('image'), wolframController.wolframImage);
+router.post('/wolfram/cloud-image', upload.single('image'), wolframController.wolframCloudImage);
 
 // ============================================================================
 // PAPER TEMPLATE ROUTES
@@ -225,13 +245,13 @@ router.route('/usage/:id')
 // KNOWLEDGE BASE ROUTES
 // ============================================================================
 router.route('/knowledge')
-  .get(authenticateToken, knowledgeBaseController.getKnowledgeBases)
-  .post(authenticateToken, knowledgeBaseController.createKnowledgeBase);
+  .get(authenticateToken, knowledgeBaseController.getEducationalCriterias)
+  .post(authenticateToken, knowledgeBaseController.createEducationalCriteria);
 
 router.route('/knowledge/:id')
-  .get(authenticateToken, knowledgeBaseController.getKnowledgeBase)
-  .put(authenticateToken, knowledgeBaseController.updateKnowledgeBase)
-  .delete(authenticateToken, knowledgeBaseController.deleteKnowledgeBase);
+  .get(authenticateToken, knowledgeBaseController.getEducationalCriteria)
+  .put(authenticateToken, knowledgeBaseController.updateEducationalCriteria)
+  .delete(authenticateToken, knowledgeBaseController.deleteEducationalCriteria);
 
 // Note: searchKnowledgeBase function needs to be implemented in knowledgeBaseController
 // router.get('/knowledge/search', authenticateToken, knowledgeBaseController.searchKnowledgeBase);
@@ -285,5 +305,6 @@ router.use('/voice', voiceRoutes);
 router.use('/knowledge-base', knowledgeBaseRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/import', importRoutes);
+router.use('/chat-rooms', chatRoomRoutes);
 
 export default router;

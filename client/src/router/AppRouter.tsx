@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useMemo } from "react";
 import { Switch, Route } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import MainLayout from "@/components/layout/mainLayout";
 import TutorCostCalculator from "@/components/CostCalculator/costings";

@@ -1,5 +1,5 @@
 import express from 'express';
-import KnowledgeBase from '../models/KnowledgeBase.js';
+import EducationalCriteria from '../models/KnowledgeBase.js';
 import { getIndex } from '../config/pinecone.js';
 
 const router = express.Router();
@@ -7,16 +7,19 @@ const router = express.Router();
 // Get all knowledge bases
 router.get('/', async (req: any, res: any) => {
   try {
-    const knowledgeBases = await KnowledgeBase.find({})
-      .select('name description totalChunks totalTokens createdAt updatedAt files.originalName files.size files.uploadDate')
+    const knowledgeBases = await EducationalCriteria.find({})
+      .select('name description educationalBoard subject level totalChunks totalTokens createdAt updatedAt files.originalName files.size files.uploadDate')
       .sort({ updatedAt: -1 });
 
     res.json({
       success: true,
-      knowledgeBases: knowledgeBases.map(kb => ({
+      criteria: knowledgeBases.map(kb => ({
         id: kb._id,
         name: kb.name,
         description: kb.description,
+        educationalBoard: kb.educationalBoard,
+        subject: kb.subject,
+        level: kb.level,
         totalChunks: kb.totalChunks,
         totalTokens: kb.totalTokens,
         fileCount: kb.files.length,
@@ -38,7 +41,7 @@ router.get('/', async (req: any, res: any) => {
 // Get specific knowledge base
 router.get('/:id', async (req: any, res: any) => {
   try {
-    const knowledgeBase = await KnowledgeBase.findById(req.params.id);
+    const knowledgeBase = await EducationalCriteria.findById(req.params.id);
     
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
@@ -74,7 +77,7 @@ router.put('/:id', async (req: any, res: any) => {
   try {
     const { name, description } = req.body;
     
-    const knowledgeBase = await KnowledgeBase.findById(req.params.id);
+    const knowledgeBase = await EducationalCriteria.findById(req.params.id);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }
@@ -104,7 +107,7 @@ router.put('/:id', async (req: any, res: any) => {
 // Delete knowledge base
 router.delete('/:id', async (req: any, res: any) => {
   try {
-    const knowledgeBase = await KnowledgeBase.findById(req.params.id);
+    const knowledgeBase = await EducationalCriteria.findById(req.params.id);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }
@@ -130,7 +133,7 @@ router.delete('/:id', async (req: any, res: any) => {
     }
 
     // Delete from MongoDB
-    await KnowledgeBase.findByIdAndDelete(req.params.id);
+    await EducationalCriteria.findByIdAndDelete(req.params.id);
 
     res.json({ success: true, message: 'Knowledge base deleted successfully' });
   } catch (error: any) {
@@ -144,7 +147,7 @@ router.delete('/:id/files/:filename', async (req: any, res: any) => {
   try {
     const { id, filename } = req.params;
     
-    const knowledgeBase = await KnowledgeBase.findById(id);
+    const knowledgeBase = await EducationalCriteria.findById(id);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }

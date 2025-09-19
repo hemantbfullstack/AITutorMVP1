@@ -32,9 +32,12 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   
   try {
     const decoded = jwt.verify(token, jwtSecret) as any;
+    console.log('Auth middleware - decoded token:', decoded);
     
     // Fetch user details from database
     const user = await User.findById(decoded.userId);
+    console.log('Auth middleware - found user:', user ? user._id.toString() : 'null');
+    
     if (!user) {
       return res.status(403).json({ error: 'User not found' });
     }
@@ -51,6 +54,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       usageCount: user.usageCount,
     };
     
+    console.log('Auth middleware - set req.user.id:', req.user.id);
     next();
   } catch (err) {
     return res.status(403).json({ error: 'Invalid or expired token' });
@@ -61,7 +65,7 @@ export const generateToken = (user: { id: string; email: string; role: string; p
   const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
   return jwt.sign(
     { 
-      id: user.id, 
+      userId: user.id,  // Changed from 'id' to 'userId' to match the decode
       email: user.email, 
       role: user.role, 
       planId: user.planId 

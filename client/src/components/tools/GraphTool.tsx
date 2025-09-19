@@ -90,7 +90,7 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
       if (error.message.includes("WOLFRAM_APP_ID not configured")) {
         toast({
           title: "Wolfram Alpha Not Configured",
-          description: "Please add your WOLFRAM_APP_ID to Replit secrets",
+          description: "Please add your WOLFRAM_APP_ID to environment variables",
           variant: "destructive",
         });
       } else {
@@ -143,7 +143,7 @@ export function GraphTool({ onSendToChat, initialFunction, initialRange }: Graph
       if (error.message.includes("WOLFRAM_APP_ID not configured")) {
         toast({
           title: "Wolfram Alpha Not Configured",
-          description: "Please add your WOLFRAM_APP_ID to Replit secrets",
+          description: "Please add your WOLFRAM_APP_ID to environment variables",
           variant: "destructive",
         });
       } else {

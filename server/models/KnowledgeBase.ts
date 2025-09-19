@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const KnowledgeBaseSchema = new mongoose.Schema({
+const EducationalCriteriaSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
@@ -9,6 +9,21 @@ const KnowledgeBaseSchema = new mongoose.Schema({
   },
   description: {
     type: String,
+    trim: true
+  },
+  educationalBoard: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  subject: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  level: {
+    type: String,
+    required: true,
     trim: true
   },
   files: [{
@@ -40,9 +55,9 @@ const KnowledgeBaseSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt field before saving
-KnowledgeBaseSchema.pre('save', function(next) {
+EducationalCriteriaSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-export default mongoose.model('KnowledgeBase', KnowledgeBaseSchema);
+export default mongoose.model('EducationalCriteria', EducationalCriteriaSchema);

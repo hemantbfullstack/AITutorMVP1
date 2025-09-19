@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   MessageSquare,
   FileText,
@@ -30,7 +30,7 @@ export default function Header() {
 
   const userNavItems = [
     { path: "/tutor", label: "AI Tutor", icon: MessageSquare },
-    { path: "/papers", label: "Paper Generator", icon: FileText },
+   // { path: "/papers", label: "Paper Generator", icon: FileText },
   ];
 
   const adminNavItems = [

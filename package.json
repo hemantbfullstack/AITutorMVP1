@@ -4,17 +4,15 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development nodemon",
+    "dev": "cross-env NODE_ENV=development nodemon server/index.ts",
     "dev:mongodb": "cross-env NODE_ENV=development nodemon server/indexMongo.ts",
-    "dev:replit": "cross-env NODE_ENV=development nodemon server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:mongodb": "vite build && esbuild server/indexMongo.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "start:mongodb": "NODE_ENV=production node dist/indexMongo.js",
     "check": "tsc",
     "db:push": "drizzle-kit push",
-    "seed": "tsx server/seed.ts",
-    "seed:replit": "cross-env NODE_ENV=development tsx server/seed.ts"
+    "seed": "tsx server/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -117,8 +115,6 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@replit/vite-plugin-cartographer": "^0.2.8",
-    "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
     "@types/bcrypt": "^6.0.0",

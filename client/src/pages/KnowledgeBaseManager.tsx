@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import axios from 'axios';
+import { apiClient } from '@/utils/apiClient';
 
 interface KnowledgeBase {
   id: string;
@@ -43,6 +43,11 @@ const KnowledgeBaseManager = () => {
   const [newKBDescription, setNewKBDescription] = useState('');
   const [selectedKBId, setSelectedKBId] = useState('');
   const [kbToDelete, setKbToDelete] = useState<KnowledgeBase | null>(null);
+  
+  // Educational criteria fields
+  const [educationalBoard, setEducationalBoard] = useState('IB');
+  const [subject, setSubject] = useState('Mathematics');
+  const [level, setLevel] = useState('HL');
 
   // Check admin access
   useEffect(() => {
@@ -60,11 +65,7 @@ const KnowledgeBaseManager = () => {
   // Fetch knowledge bases
   const fetchKnowledgeBases = async () => {
     try {
-      const response = await axios.get('/api/knowledge-base', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
+      const response = await apiClient.get('/knowledge-base');
       setKnowledgeBases(response.data.knowledgeBases);
     } catch (error: any) {
       toast({
@@ -134,17 +135,19 @@ const KnowledgeBaseManager = () => {
     formData.append('file', selectedFile);
 
     if (uploadMode === 'new') {
-      formData.append('knowledgeBaseName', newKBName);
+      formData.append('criteriaName', newKBName);
       formData.append('description', newKBDescription);
+      formData.append('educationalBoard', educationalBoard);
+      formData.append('subject', subject);
+      formData.append('level', level);
     } else {
-      formData.append('knowledgeBaseId', selectedKBId);
+      formData.append('criteriaId', selectedKBId);
     }
 
     try {
-      const response = await axios.post('/api/upload', formData, {
+      const response = await apiClient.post('/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 
@@ -153,9 +156,7 @@ const KnowledgeBaseManager = () => {
         description: "File uploaded successfully!",
       });
       setShowUploadModal(false);
-      setSelectedFile(null);
-      setNewKBName('');
-      setNewKBDescription('');
+      resetFormFields();
       setSelectedKBId('');
       fetchKnowledgeBases();
     } catch (error: any) {
@@ -191,11 +192,7 @@ const KnowledgeBaseManager = () => {
 
     setDeleting(true);
     try {
-      await axios.delete(`/api/knowledge-base/${kbToDelete.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
+      await apiClient.delete(`/knowledge-base/${kbToDelete.id}`);
       
       toast({
         title: "Success",
@@ -231,6 +228,18 @@ const KnowledgeBaseManager = () => {
     if (value === 'new' || value === 'existing') {
       setUploadMode(value);
     }
+  };
+
+  // Reset form fields
+  const resetFormFields = () => {
+    setSelectedFile(null);
+    setNewKBName('');
+    setNewKBDescription('');
+    setSelectedKBId('');
+    setEducationalBoard('IB');
+    setSubject('Mathematics');
+    setLevel('HL');
+    setUploadMode('new');
   };
 
   // Show loading while checking authentication
@@ -271,7 +280,8 @@ const KnowledgeBaseManager = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
+    <div className="min-h-screen bg-gray-50 pt-20">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -281,43 +291,47 @@ const KnowledgeBaseManager = () => {
           </h1>
           <p className="text-gray-600 mt-2">Upload and manage learning materials for the AI tutor</p>
         </div>
-        <Button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Upload File
-        </Button>
+        {user?.role === 'admin' && (
+          <Button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Upload File
+          </Button>
+        )}
       </div>
 
-      {/* Upload Dropzone */}
-      <Card>
-        <CardContent className="p-8">
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-              isDragActive
-                ? 'border-blue-500 bg-blue-50 scale-105'
-                : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-            }`}
-          >
-            <input {...getInputProps()} />
-            <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              {isDragActive ? 'Drop your file here' : 'Drag & drop a file here'}
-            </h3>
-            <p className="text-gray-500 mb-4">
-              or click to select a file (PDF, TXT, DOCX)
-            </p>
-            <div className="flex items-center justify-center gap-4 text-sm text-gray-400">
-              <Badge variant="outline">PDF</Badge>
-              <Badge variant="outline">TXT</Badge>
-              <Badge variant="outline">DOCX</Badge>
-              <span>• Max 15MB</span>
+      {/* Upload Dropzone - Admin Only */}
+      {user?.role === 'admin' && (
+        <Card>
+          <CardContent className="p-8">
+            <div
+              {...getRootProps()}
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                isDragActive
+                  ? 'border-blue-500 bg-blue-50 scale-105'
+                  : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+              }`}
+            >
+              <input {...getInputProps()} />
+              <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                {isDragActive ? 'Drop your file here' : 'Drag & drop a file here'}
+              </h3>
+              <p className="text-gray-500 mb-4">
+                or click to select a file (PDF, TXT, DOCX)
+              </p>
+              <div className="flex items-center justify-center gap-4 text-sm text-gray-400">
+                <Badge variant="outline">PDF</Badge>
+                <Badge variant="outline">TXT</Badge>
+                <Badge variant="outline">DOCX</Badge>
+                <span>• Max 15MB</span>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Knowledge Bases List */}
       <div>
@@ -326,29 +340,31 @@ const KnowledgeBaseManager = () => {
             <FileText className="h-6 w-6 text-blue-600" />
             Knowledge Bases
             <Badge variant="secondary" className="ml-2">
-              {knowledgeBases.length}
+              {knowledgeBases?.length || 0}
             </Badge>
           </h2>
         </div>
         
-        {knowledgeBases.length === 0 ? (
+        {(!knowledgeBases || knowledgeBases.length === 0) ? (
           <Card>
             <CardContent className="text-center py-12">
               <Database className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No knowledge bases yet</h3>
               <p className="text-gray-500 mb-4">Upload your first document to get started</p>
-              <Button
-                onClick={() => setShowUploadModal(true)}
-                variant="outline"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Upload First Document
-              </Button>
+              {user?.role === 'admin' && (
+                <Button
+                  onClick={() => setShowUploadModal(true)}
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Upload First Document
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {knowledgeBases.map((kb) => (
+            {knowledgeBases && knowledgeBases.map((kb) => (
               <Card key={kb.id} className="hover:shadow-lg transition-shadow duration-200">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -394,9 +410,10 @@ const KnowledgeBaseManager = () => {
         )}
       </div>
 
-      {/* Upload Modal */}
-      <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
-        <DialogContent className="sm:max-w-md">
+      {/* Upload Modal - Admin Only */}
+      {user?.role === 'admin' && (
+        <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
@@ -409,18 +426,28 @@ const KnowledgeBaseManager = () => {
 
           <div className="space-y-4">
             {selectedFile ? (
-              <div className="p-4 bg-gray-50 rounded-lg border">
-                <div className="flex items-center space-x-3">
-                  <FileText className="h-8 w-8 text-gray-500" />
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                    <p className={`text-sm ${selectedFile.size > 15 * 1024 * 1024 ? 'text-red-500' : 'text-gray-500'}`}>
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+                <div className="flex items-center space-x-4">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{selectedFile.name}</p>
+                    <p className={`text-sm ${selectedFile.size > 15 * 1024 * 1024 ? 'text-red-500' : 'text-gray-600'}`}>
                       {formatFileSize(selectedFile.size)}
                       {selectedFile.size > 15 * 1024 * 1024 && (
                         <span className="ml-2 text-red-600 font-medium">(Too large - max 15MB)</span>
                       )}
                     </p>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedFile(null)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -434,10 +461,14 @@ const KnowledgeBaseManager = () => {
               </div>
             )}
 
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Upload Mode</Label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-2">
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold text-gray-700">Upload Mode</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                  uploadMode === 'new' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}>
                   <input
                     type="radio"
                     value="new"
@@ -445,9 +476,16 @@ const KnowledgeBaseManager = () => {
                     onChange={(e) => handleUploadModeChange(e.target.value)}
                     className="text-blue-600"
                   />
-                  <span className="text-sm">Create new Knowledge Base</span>
+                  <div>
+                    <span className="text-sm font-medium">Create new Knowledge Base</span>
+                    <p className="text-xs text-gray-500">Start fresh with new criteria</p>
+                  </div>
                 </label>
-                <label className="flex items-center space-x-2">
+                <label className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                  uploadMode === 'existing' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}>
                   <input
                     type="radio"
                     value="existing"
@@ -455,7 +493,10 @@ const KnowledgeBaseManager = () => {
                     onChange={(e) => handleUploadModeChange(e.target.value)}
                     className="text-blue-600"
                   />
-                  <span className="text-sm">Add to existing Knowledge Base</span>
+                  <div>
+                    <span className="text-sm font-medium">Add to existing Knowledge Base</span>
+                    <p className="text-xs text-gray-500">Extend current criteria</p>
+                  </div>
                 </label>
               </div>
             </div>
@@ -481,6 +522,80 @@ const KnowledgeBaseManager = () => {
                     placeholder="Optional description of this knowledge base"
                   />
                 </div>
+                
+                {/* Educational Criteria Section */}
+                <div className="space-y-4">
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-blue-600" />
+                      Educational Criteria
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="educational-board" className="text-sm font-medium text-gray-700">
+                            Educational Board *
+                          </Label>
+                          <Select value={educationalBoard} onValueChange={setEducationalBoard}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select educational board" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="IB">IB (International Baccalaureate)</SelectItem>
+                              <SelectItem value="A-Levels">A-Levels</SelectItem>
+                              <SelectItem value="AP">AP (Advanced Placement)</SelectItem>
+                              <SelectItem value="SAT">SAT</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="subject" className="text-sm font-medium text-gray-700">
+                              Subject *
+                            </Label>
+                            <Select value={subject} onValueChange={setSubject}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select subject" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Mathematics">Mathematics</SelectItem>
+                                <SelectItem value="Physics">Physics</SelectItem>
+                                <SelectItem value="Chemistry">Chemistry</SelectItem>
+                                <SelectItem value="Biology">Biology</SelectItem>
+                                <SelectItem value="English">English</SelectItem>
+                                <SelectItem value="History">History</SelectItem>
+                                <SelectItem value="Geography">Geography</SelectItem>
+                                <SelectItem value="Economics">Economics</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="level" className="text-sm font-medium text-gray-700">
+                              Level *
+                            </Label>
+                            <Select value={level} onValueChange={setLevel}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select level" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="HL">Higher Level (HL)</SelectItem>
+                                <SelectItem value="SL">Standard Level (SL)</SelectItem>
+                                <SelectItem value="A-Level">A-Level</SelectItem>
+                                <SelectItem value="AP">AP</SelectItem>
+                                <SelectItem value="Foundation">Foundation</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -492,7 +607,7 @@ const KnowledgeBaseManager = () => {
                     <SelectValue placeholder="Choose a knowledge base" />
                   </SelectTrigger>
                   <SelectContent>
-                    {knowledgeBases.map((kb) => (
+                    {knowledgeBases && knowledgeBases.map((kb) => (
                       <SelectItem key={kb.id} value={kb.id}>
                         {kb.name}
                       </SelectItem>
@@ -506,7 +621,10 @@ const KnowledgeBaseManager = () => {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowUploadModal(false)}
+              onClick={() => {
+                setShowUploadModal(false);
+                resetFormFields();
+              }}
               disabled={uploading}
             >
               Cancel
@@ -526,7 +644,8 @@ const KnowledgeBaseManager = () => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -568,6 +687,7 @@ const KnowledgeBaseManager = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 };

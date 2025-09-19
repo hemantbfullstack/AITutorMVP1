@@ -1,5 +1,5 @@
 import ChatSession from '../models/ChatSession.js';
-import KnowledgeBase from '../models/KnowledgeBase.js';
+import EducationalCriteria from '../models/KnowledgeBase.js';
 
 // Create new chat session
 const createChatSession = async (req: any, res: any) => {
@@ -7,7 +7,7 @@ const createChatSession = async (req: any, res: any) => {
     const { sessionId, knowledgeBaseId } = req.body;
 
     // Verify knowledge base exists
-    const knowledgeBase = await KnowledgeBase.findById(knowledgeBaseId);
+    const knowledgeBase = await EducationalCriteria.findById(knowledgeBaseId);
     if (!knowledgeBase) {
       return res.status(404).json({ error: 'Knowledge base not found' });
     }
@@ -170,7 +170,7 @@ const updateChatSession = async (req: any, res: any) => {
 
     // Verify knowledge base exists if provided
     if (knowledgeBaseId) {
-      const knowledgeBase = await KnowledgeBase.findById(knowledgeBaseId);
+      const knowledgeBase = await EducationalCriteria.findById(knowledgeBaseId);
       if (!knowledgeBase) {
         return res.status(404).json({ error: 'Knowledge base not found' });
       }

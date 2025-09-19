@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import ChatArea from "@/components/chat/ChatArea";
 import MathToolsModal from "@/components/tools/MathToolsModal";
