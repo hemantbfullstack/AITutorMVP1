@@ -4,11 +4,9 @@ export interface ChatRoom {
   roomId: string;
   userId: string;
   title: string;
-  type: 'educational-criteria' | 'ib-tutor' | 'general';
+  type: 'educational-criteria' | 'general';
   criteriaId?: string;
   sessionId?: string;
-  ibSubject?: 'AA' | 'AI';
-  ibLevel?: 'HL' | 'SL';
   messageCount: number;
   lastMessageAt: string;
   isActive: boolean;
@@ -110,10 +108,8 @@ export interface MessagesResponse {
 // Chat Room Creation Types
 export interface CreateChatRoomRequest {
   title: string;
-  type: 'educational-criteria' | 'ib-tutor' | 'general';
+  type: 'educational-criteria' | 'general';
   criteriaId?: string;
-  ibSubject?: 'AA' | 'AI';
-  ibLevel?: 'HL' | 'SL';
   ttsSettings?: {
     selectedVoiceId: string;
     autoPlayVoice: boolean;

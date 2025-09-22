@@ -99,8 +99,6 @@ export default function ChatAreaEnhanced({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-  const [ibSubject, setIbSubject] = useState<"AA" | "AI">("AA");
-  const [ibLevel, setIbLevel] = useState<"HL" | "SL">("HL");
   const [selfTestResult, setSelfTestResult] = useState<string | null>(null);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("alloy");
   const [autoPlayVoice, setAutoPlayVoice] = useState(false);

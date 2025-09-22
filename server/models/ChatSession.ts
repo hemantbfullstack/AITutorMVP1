@@ -31,10 +31,27 @@ const ChatSessionSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  userId: {
+    type: String,
+    required: true,
+    ref: 'User',
+    index: true
+  },
+  roomId: {
+    type: String,
+    ref: 'ChatRoom',
+    required: false,
+    index: true
+  },
   criteriaId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EducationalCriteria',
     required: true
+  },
+  title: {
+    type: String,
+    trim: true,
+    maxlength: 200
   },
   messages: [MessageSchema],
   totalTokensUsed: {

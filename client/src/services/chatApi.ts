@@ -164,15 +164,6 @@ export const chatApi = {
     });
   },
 
-  // Create IB tutor chat room
-  createIBTutorRoom: async (ibSubject: 'AA' | 'AI', ibLevel: 'HL' | 'SL', title: string): Promise<ChatRoom> => {
-    return chatRoomApi.create({
-      title,
-      type: 'ib-tutor',
-      ibSubject,
-      ibLevel
-    });
-  },
 
   // Create general chat room
   createGeneralRoom: async (title: string): Promise<ChatRoom> => {

@@ -66,7 +66,7 @@ const KnowledgeBaseManager = () => {
   const fetchKnowledgeBases = async () => {
     try {
       const response = await apiClient.get('/knowledge-base');
-      setKnowledgeBases(response.data.knowledgeBases);
+      setKnowledgeBases(response.data.criteria || response.data.knowledgeBases || response.data || []);
     } catch (error: any) {
       toast({
         title: "Error",

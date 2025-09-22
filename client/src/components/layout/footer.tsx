@@ -11,9 +11,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-xl font-bold text-white mb-4">IB Math Tutor</h3>
+            <h3 className="text-xl font-bold text-white mb-4">AI Tutor</h3>
             <p className="text-slate-400 mb-4 max-w-md">
-              Advanced AI-powered mathematics tutoring for IB students. Get personalized help with complex mathematical concepts, 
+              Advanced AI-powered mathematics tutoring. Get personalized help with complex mathematical concepts, 
               interactive visualizations, and comprehensive paper generation.
             </p>
             <div className="flex space-x-4">
@@ -82,10 +82,10 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-slate-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-slate-400 text-sm">
-            © {currentYear} IB Math Tutor. All rights reserved.
+            © {currentYear} AI Tutor. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <span className="text-slate-500 text-sm">Made with ❤️ for IB Students</span>
+            <span className="text-slate-500 text-sm">Made with ❤️ for Students</span>
           </div>
         </div>
       </div>

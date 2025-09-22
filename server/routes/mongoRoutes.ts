@@ -8,7 +8,6 @@ import { checkUsage } from '../checkUsageMiddleware.js';
 // Import all controllers
 import * as userController from '../controllers/userController.js';
 import * as sessionController from '../controllers/sessionController.js';
-import * as tutorSessionController from '../controllers/tutorSessionController.js';
 import * as messageController from '../controllers/messageController.js';
 import * as paperTemplateController from '../controllers/paperTemplateController.js';
 import * as generatedPaperController from '../controllers/generatedPaperController.js';
@@ -16,7 +15,6 @@ import * as resourceDocController from '../controllers/resourceDocController.js'
 import * as usageController from '../controllers/usageController.js';
 import * as knowledgeBaseController from '../controllers/knowledgeBaseController.js';
 import * as chatSessionController from '../controllers/chatSessionController.js';
-import * as tutorController from '../controllers/tutorController.js';
 import * as mathToolsController from '../controllers/mathToolsController.js';
 import * as voiceController from '../controllers/voiceController.js';
 import * as paperGenerationController from '../controllers/paperGenerationController.js';
@@ -113,19 +111,6 @@ router.route('/sessions/:id')
   .put(authenticateToken, sessionController.updateSession)
   .delete(authenticateToken, sessionController.deleteSession);
 
-// ============================================================================
-// TUTOR SESSION ROUTES
-// ============================================================================
-router.route('/tutor/sessions')
-  .get(authenticateToken, tutorSessionController.getUserTutorSessions)
-  .post(authenticateToken, tutorSessionController.createTutorSession);
-
-router.route('/tutor/sessions/:id')
-  .get(authenticateToken, tutorSessionController.getTutorSession)
-  .put(authenticateToken, tutorSessionController.updateTutorSession)
-  .delete(authenticateToken, tutorSessionController.endTutorSession);
-
-router.get('/tutor/sessions/user/:userId', authenticateToken, tutorSessionController.getUserTutorSessions);
 
 // ============================================================================
 // MESSAGE ROUTES
@@ -155,11 +140,6 @@ router.route('/chat/sessions/:id')
 
 router.get('/chat/sessions/user/:userId', authenticateToken, chatSessionController.getChatSessions);
 
-// ============================================================================
-// TUTOR ROUTES
-// ============================================================================
-router.post('/tutor/selftest', authenticateToken, tutorController.tutorSelfTest);
-router.post('/tutor/message', authenticateToken, checkUsage, tutorRateLimit, tutorController.tutorMessage);
 
 // ============================================================================
 // MATH TOOLS ROUTES

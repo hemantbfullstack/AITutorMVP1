@@ -10,13 +10,11 @@ const createChatRoom = async (req: any, res: any) => {
       title, 
       type, 
       criteriaId, 
-      ibSubject, 
-      ibLevel, 
       ttsSettings 
     } = req.body;
 
     console.log('Create chat room - userId:', userId);
-    console.log('Create chat room - request body:', { title, type, criteriaId, ibSubject, ibLevel });
+    console.log('Create chat room - request body:', { title, type, criteriaId });
 
     // Validate required fields based on type
     if (!title || !type) {
@@ -31,11 +29,6 @@ const createChatRoom = async (req: any, res: any) => {
       });
     }
 
-    if (type === 'ib-tutor' && (!ibSubject || !ibLevel)) {
-      return res.status(400).json({ 
-        error: 'ibSubject and ibLevel are required for ib-tutor type' 
-      });
-    }
 
     // Generate unique room ID
     const roomId = uuidv4();
@@ -47,8 +40,6 @@ const createChatRoom = async (req: any, res: any) => {
       title: title.trim(),
       type,
       criteriaId: type === 'educational-criteria' ? criteriaId : undefined,
-      ibSubject: type === 'ib-tutor' ? ibSubject : undefined,
-      ibLevel: type === 'ib-tutor' ? ibLevel : undefined,
       ttsSettings: ttsSettings || {
         selectedVoiceId: 'alloy',
         autoPlayVoice: false,
@@ -94,23 +85,13 @@ const getChatRooms = async (req: any, res: any) => {
 
     // Build query
     let query: any = { userId };
-    
-    if (isActive !== undefined) {
-      query.isActive = isActive === 'true';
-    }
-    
-    if (type) {
-      query.type = type;
-    }
+
 
     console.log('Get chat rooms - final query:', query);
-
-    // Test: Check if there are any rooms in the database at all
-    const allRooms = await ChatRoom.find({});
-    console.log('Get chat rooms - total rooms in DB:', allRooms.length);
-    if (allRooms.length > 0) {
-      console.log('Get chat rooms - sample room userId:', allRooms[0].userId, 'type:', typeof allRooms[0].userId);
-    }
+    // Also check rooms for this specific user
+    const userRooms = await ChatRoom.find({ userId });
+    console.log('Get chat rooms - rooms for this user:', userRooms.length);
+    console.log('Get chat rooms - user rooms details:', userRooms.map(r => ({ roomId: r.roomId, userId: r.userId, title: r.title })));
 
     const rooms = await ChatRoom.find(query)
       .populate('criteriaId', 'name description educationalBoard subject level')
@@ -119,6 +100,7 @@ const getChatRooms = async (req: any, res: any) => {
       .limit(limitNum);
 
     console.log('Get chat rooms - found rooms:', rooms.length);
+    console.log('Get chat rooms - room details:', rooms.map(r => ({ roomId: r.roomId, userId: r.userId, title: r.title })));
 
     const total = await ChatRoom.countDocuments(query);
     console.log('Get chat rooms - total count:', total);

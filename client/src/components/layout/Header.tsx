@@ -37,6 +37,7 @@ export default function Header() {
     { path: "/admin", label: "Dashboard", icon: BarChart3 },
     { path: "/admin/users", label: "Users", icon: Users },
     { path: "/admin/sync", label: "Plan Sync", icon: Settings },
+    { path: "/knowledge-base", label: "Knowledgebase", icon: Settings },
   ];
 
   const getNavItems = () => {
@@ -56,7 +57,7 @@ export default function Header() {
             <div className="flex-shrink-0">
               <Link href="/">
                 <h1 className="text-xl font-bold text-slate-900 cursor-pointer">
-                  IB Math Tutor
+                  AI Tutor
                 </h1>
               </Link>
             </div>

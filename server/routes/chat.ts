@@ -2,6 +2,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import EducationalCriteria from '../models/KnowledgeBase.js';
 import ChatSession from '../models/ChatSession.js';
+import ChatRoom from '../models/ChatRoom.js';
 import { generateEmbedding, generateResponse } from '../config/openai.js';
 import { getIndex } from '../config/pinecone.js';
 import { authenticateToken } from '../middleware/auth.js';
@@ -12,7 +13,8 @@ const router = express.Router();
 // Create new chat session
 router.post('/session', authenticateToken, async (req: any, res: any) => {
   try {
-    const { criteriaId } = req.body;
+    const userId = req.user.id;
+    const { criteriaId, title } = req.body;
 
     if (!criteriaId) {
       return res.status(400).json({ error: 'Educational criteria ID is required' });
@@ -24,10 +26,34 @@ router.post('/session', authenticateToken, async (req: any, res: any) => {
       return res.status(404).json({ error: 'Educational criteria not found' });
     }
 
+    // Create chat room first
+    const roomId = uuidv4();
+    const chatRoom = new ChatRoom({
+      roomId,
+      userId,
+      title: title || `${criteria.name} Chat`,
+      type: 'educational-criteria',
+      criteriaId,
+      messageCount: 0,
+      lastMessageAt: new Date(),
+      ttsSettings: {
+        selectedVoiceId: 'alloy',
+        autoPlayVoice: false,
+        volume: 0.7
+      }
+    });
+
+    await chatRoom.save();
+    console.log('Created chat room:', roomId, 'for user:', userId);
+
+    // Create chat session
     const sessionId = uuidv4();
     const chatSession = new ChatSession({
       sessionId,
+      userId,
+      roomId,
       criteriaId,
+      title: title || `${criteria.name} Chat`,
       messages: []
     });
 
@@ -37,11 +63,13 @@ router.post('/session', authenticateToken, async (req: any, res: any) => {
       success: true,
       session: {
         sessionId,
+        roomId,
         criteriaId,
         criteriaName: criteria.name,
         educationalBoard: criteria.educationalBoard,
         subject: criteria.subject,
         level: criteria.level,
+        title: chatSession.title,
         createdAt: chatSession.createdAt
       }
     });
@@ -54,6 +82,7 @@ router.post('/session', authenticateToken, async (req: any, res: any) => {
 router.post("/message", authenticateToken, checkUsage, async (req: any, res: any) => {
   try {
     const { sessionId, message, isVoice = false } = req.body;
+    const userId = req.user.id;
 
     if (!sessionId || !message) {
       return res
@@ -218,6 +247,17 @@ ${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoar
     chatSession.totalTokensUsed += response.length;
     await chatSession.save();
 
+    // Update ChatRoom message count and last message time
+    if (chatSession.roomId) {
+      await ChatRoom.findOneAndUpdate(
+        { roomId: chatSession.roomId, userId },
+        { 
+          messageCount: chatSession.messages.length,
+          lastMessageAt: new Date()
+        }
+      );
+    }
+
     res.json({
       success: true,
       response: {
@@ -236,12 +276,13 @@ ${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoar
   }
 });
 
-// Get chat history
-router.get('/session/:sessionId', async (req: any, res: any) => {
+// Get chat history by sessionId
+router.get('/session/:sessionId', authenticateToken, async (req: any, res: any) => {
   try {
     const { sessionId } = req.params;
+    const userId = req.user.id;
 
-    const chatSession = await ChatSession.findOne({ sessionId }).populate('knowledgeBaseId');
+    const chatSession = await ChatSession.findOne({ sessionId, userId }).populate('criteriaId');
     if (!chatSession) {
       return res.status(404).json({ error: 'Chat session not found' });
     }
@@ -250,8 +291,13 @@ router.get('/session/:sessionId', async (req: any, res: any) => {
       success: true,
       session: {
         sessionId: chatSession.sessionId,
-        knowledgeBaseId: chatSession.knowledgeBaseId._id,
-        knowledgeBaseName: chatSession.knowledgeBaseId.name,
+        roomId: chatSession.roomId,
+        criteriaId: chatSession.criteriaId._id,
+        criteriaName: chatSession.criteriaId.name,
+        educationalBoard: chatSession.criteriaId.educationalBoard,
+        subject: chatSession.criteriaId.subject,
+        level: chatSession.criteriaId.level,
+        title: chatSession.title,
         messages: chatSession.messages,
         totalTokensUsed: chatSession.totalTokensUsed,
         createdAt: chatSession.createdAt,
@@ -264,26 +310,89 @@ router.get('/session/:sessionId', async (req: any, res: any) => {
   }
 });
 
-// Get all chat sessions
-router.get('/sessions', async (req: any, res: any) => {
+// Get chat history by roomId
+router.get('/room/:roomId', authenticateToken, async (req: any, res: any) => {
   try {
-    const sessions = await ChatSession.find({})
-      .populate('knowledgeBaseId', 'name')
-      .select('sessionId knowledgeBaseId messages totalTokensUsed createdAt lastActivity')
+    const { roomId } = req.params;
+    const userId = req.user.id;
+
+    // Verify room exists and user has access
+    const room = await ChatRoom.findOne({ roomId, userId });
+    if (!room) {
+      return res.status(404).json({ error: 'Chat room not found' });
+    }
+
+    const chatSession = await ChatSession.findOne({ roomId, userId }).populate('criteriaId');
+    if (!chatSession) {
+      return res.status(404).json({ error: 'Chat session not found' });
+    }
+
+    res.json({
+      success: true,
+      session: {
+        sessionId: chatSession.sessionId,
+        roomId: chatSession.roomId,
+        criteriaId: chatSession.criteriaId._id,
+        criteriaName: chatSession.criteriaId.name,
+        educationalBoard: chatSession.criteriaId.educationalBoard,
+        subject: chatSession.criteriaId.subject,
+        level: chatSession.criteriaId.level,
+        title: chatSession.title,
+        messages: chatSession.messages,
+        totalTokensUsed: chatSession.totalTokensUsed,
+        createdAt: chatSession.createdAt,
+        lastActivity: chatSession.lastActivity
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching chat session by room:', error);
+    res.status(500).json({ error: 'Failed to fetch chat session' });
+  }
+});
+
+// Get user's chat sessions
+router.get('/sessions', authenticateToken, async (req: any, res: any) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 20 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const sessions = await ChatSession.find({ userId })
+      .populate('criteriaId', 'name educationalBoard subject level')
+      .select('sessionId roomId criteriaId title messages totalTokensUsed createdAt lastActivity')
       .sort({ lastActivity: -1 })
-      .limit(50);
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await ChatSession.countDocuments({ userId });
 
     res.json({
       success: true,
       sessions: sessions.map(session => ({
         sessionId: session.sessionId,
-        knowledgeBaseId: session.knowledgeBaseId._id,
-        knowledgeBaseName: session.knowledgeBaseId.name,
+        roomId: session.roomId,
+        criteriaId: session.criteriaId._id,
+        criteriaName: session.criteriaId.name,
+        educationalBoard: session.criteriaId.educationalBoard,
+        subject: session.criteriaId.subject,
+        level: session.criteriaId.level,
+        title: session.title,
         messageCount: session.messages.length,
         totalTokensUsed: session.totalTokensUsed,
         createdAt: session.createdAt,
         lastActivity: session.lastActivity
-      }))
+      })),
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+        hasNext: pageNum < Math.ceil(total / limitNum),
+        hasPrev: pageNum > 1
+      }
     });
   } catch (error) {
     console.error('Error fetching chat sessions:', error);
@@ -291,20 +400,134 @@ router.get('/sessions', async (req: any, res: any) => {
   }
 });
 
+// Create new chat (save current and start new)
+router.post('/new-chat', authenticateToken, async (req: any, res: any) => {
+  try {
+    const userId = req.user.id;
+    const { criteriaId, title } = req.body;
+
+    if (!criteriaId) {
+      return res.status(400).json({ error: 'Educational criteria ID is required' });
+    }
+
+    // Verify educational criteria exists
+    const criteria = await EducationalCriteria.findById(criteriaId);
+    if (!criteria) {
+      return res.status(404).json({ error: 'Educational criteria not found' });
+    }
+
+    // Create new chat room
+    const roomId = uuidv4();
+    const chatRoom = new ChatRoom({
+      roomId,
+      userId,
+      title: title || `${criteria.name} Chat`,
+      type: 'educational-criteria',
+      criteriaId,
+      messageCount: 0,
+      lastMessageAt: new Date(),
+      ttsSettings: {
+        selectedVoiceId: 'alloy',
+        autoPlayVoice: false,
+        volume: 0.7
+      }
+    });
+
+    await chatRoom.save();
+    console.log('Created new chat room:', roomId, 'for user:', userId);
+
+    // Create new chat session
+    const sessionId = uuidv4();
+    const chatSession = new ChatSession({
+      sessionId,
+      userId,
+      roomId,
+      criteriaId,
+      title: title || `${criteria.name} Chat`,
+      messages: []
+    });
+
+    await chatSession.save();
+
+    res.json({
+      success: true,
+      session: {
+        sessionId,
+        roomId,
+        criteriaId,
+        criteriaName: criteria.name,
+        educationalBoard: criteria.educationalBoard,
+        subject: criteria.subject,
+        level: criteria.level,
+        title: chatSession.title,
+        createdAt: chatSession.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error creating new chat:', error);
+    res.status(500).json({ error: 'Failed to create new chat' });
+  }
+});
+
 // Delete chat session
-router.delete('/session/:sessionId', async (req: any, res: any) => {
+router.delete('/session/:sessionId', authenticateToken, async (req: any, res: any) => {
   try {
     const { sessionId } = req.params;
+    const userId = req.user.id;
 
-    const result = await ChatSession.deleteOne({ sessionId });
-    if (result.deletedCount === 0) {
+    const chatSession = await ChatSession.findOne({ sessionId, userId });
+    if (!chatSession) {
       return res.status(404).json({ error: 'Chat session not found' });
     }
+
+    // Delete associated chat room if it exists
+    if (chatSession.roomId) {
+      await ChatRoom.deleteOne({ roomId: chatSession.roomId, userId });
+    }
+
+    // Delete the session
+    await ChatSession.deleteOne({ sessionId, userId });
 
     res.json({ success: true, message: 'Chat session deleted successfully' });
   } catch (error) {
     console.error('Error deleting chat session:', error);
     res.status(500).json({ error: 'Failed to delete chat session' });
+  }
+});
+
+// Debug route to get all rooms (for debugging)
+router.get('/debug/rooms', authenticateToken, async (req: any, res: any) => {
+  try {
+    const userId = req.user.id;
+    console.log('Debug - userId:', userId, 'type:', typeof userId);
+    
+    const allRooms = await ChatRoom.find({});
+    console.log('Debug - all rooms count:', allRooms.length);
+    
+    const userRooms = await ChatRoom.find({ userId });
+    console.log('Debug - user rooms count:', userRooms.length);
+    
+    res.json({
+      success: true,
+      userId,
+      allRoomsCount: allRooms.length,
+      userRoomsCount: userRooms.length,
+      allRooms: allRooms.map(room => ({
+        roomId: room.roomId,
+        userId: room.userId,
+        title: room.title,
+        type: room.type
+      })),
+      userRooms: userRooms.map(room => ({
+        roomId: room.roomId,
+        userId: room.userId,
+        title: room.title,
+        type: room.type
+      }))
+    });
+  } catch (error) {
+    console.error('Debug rooms error:', error);
+    res.status(500).json({ error: 'Debug failed' });
   }
 });
 

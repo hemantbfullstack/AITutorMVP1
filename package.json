@@ -12,7 +12,8 @@
     "start:mongodb": "NODE_ENV=production node dist/indexMongo.js",
     "check": "tsc",
     "db:push": "drizzle-kit push",
-    "seed": "tsx server/seed.ts"
+    "seed": "tsx server/seed.ts",
+    "seed:criteria": "tsx server/seed.ts --criteria-only"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

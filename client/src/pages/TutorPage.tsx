@@ -8,6 +8,7 @@ const TutorPage = () => {
   const [knowledgeBases, setKnowledgeBases] = useState([]);
   const [selectedKB, setSelectedKB] = useState('');
   const [sessionId, setSessionId] = useState('');
+  const [roomId, setRoomId] = useState('');
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -15,6 +16,8 @@ const TutorPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState('alloy');
+  const [chatSessions, setChatSessions] = useState([]);
+  const [showChatHistory, setShowChatHistory] = useState(false);
   
   const mediaRecorderRef = useRef(null);
   const audioRef = useRef(null);
@@ -41,9 +44,42 @@ const TutorPage = () => {
     }
   };
 
+  // Fetch chat sessions
+  const fetchChatSessions = async () => {
+    try {
+      const response = await axios.get('/api/chat-rooms/rooms');
+      console.log('Fetched chat rooms:', response.data);
+      setChatSessions(response.data.rooms || []);
+    } catch (error) {
+      console.error('Error fetching chat sessions:', error);
+    }
+  };
+
   useEffect(() => {
     fetchKnowledgeBases();
     fetchVoices();
+    fetchChatSessions();
+    
+    // Load the most recent chat session if any exists
+    const loadMostRecentChat = async () => {
+      try {
+        const response = await axios.get('/api/chat-rooms/rooms');
+        const rooms = response.data.rooms || [];
+        
+        if (rooms.length > 0) {
+          // Find the most recent room
+          const mostRecentRoom = rooms.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))[0];
+          if (mostRecentRoom) {
+            await loadChatSession(mostRecentRoom.roomId);
+            toast.success('Loaded your last chat session');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading most recent chat:', error);
+      }
+    };
+    
+    loadMostRecentChat();
   }, []);
 
   // Scroll to bottom when new messages arrive
@@ -51,13 +87,14 @@ const TutorPage = () => {
   //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   // }, [messages]);
 
-  // Create new chat session
+  // Create new chat session (only when user sends first message)
   const createSession = async (kbId) => {
     try {
       const response = await axios.post('/api/chat/session', {
-        knowledgeBaseId: kbId
+        criteriaId: kbId
       });
       setSessionId(response.data.session.sessionId);
+      setRoomId(response.data.session.roomId);
       setMessages([]);
       toast.success('New chat session started');
     } catch (error) {
@@ -66,15 +103,100 @@ const TutorPage = () => {
     }
   };
 
+  // Load the most recent chat session for the selected KB
+  const loadLastChatSession = async (kbId) => {
+    try {
+      // Get all chat sessions for this user
+      const response = await axios.get('/api/chat-rooms/rooms');
+      const rooms = response.data.rooms || [];
+      
+      // Find the most recent room for this KB
+      const recentRoom = rooms
+        .filter(room => room.criteriaId === kbId)
+        .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))[0];
+      
+      if (recentRoom) {
+        // Load the existing chat session
+        await loadChatSession(recentRoom.roomId);
+        toast.success('Loaded last chat session');
+      } else {
+        // No previous chat for this KB, don't create one yet
+        setSessionId('');
+        setRoomId('');
+        setMessages([]);
+        setSelectedKB(kbId);
+      }
+    } catch (error) {
+      console.error('Error loading last chat session:', error);
+      // Fallback: just set the KB without creating session
+      setSessionId('');
+      setRoomId('');
+      setMessages([]);
+      setSelectedKB(kbId);
+    }
+  };
+
+  // Create new chat (save current and start new)
+  const createNewChat = async () => {
+    if (!selectedKB) {
+      toast.error('Please select a knowledge base first');
+      return;
+    }
+
+    try {
+      const response = await axios.post('/api/chat/new-chat', {
+        criteriaId: selectedKB
+      });
+      setSessionId(response.data.session.sessionId);
+      setRoomId(response.data.session.roomId);
+      setMessages([]);
+      fetchChatSessions(); // Refresh chat sessions list
+      toast.success('New chat created');
+    } catch (error) {
+      toast.error('Failed to create new chat');
+      console.error('Error creating new chat:', error);
+    }
+  };
+
+  // Load existing chat session
+  const loadChatSession = async (roomId) => {
+    try {
+      const response = await axios.get(`/api/chat/room/${roomId}`);
+      const session = response.data.session;
+      
+      setSessionId(session.sessionId);
+      setRoomId(session.roomId);
+      setSelectedKB(session.criteriaId);
+      setMessages(session.messages || []);
+      setShowChatHistory(false);
+      toast.success('Chat session loaded');
+    } catch (error) {
+      toast.error('Failed to load chat session');
+      console.error('Error loading chat session:', error);
+    }
+  };
+
   // Handle knowledge base selection
   const handleKBSelection = (kbId) => {
     setSelectedKB(kbId);
-    createSession(kbId);
+    loadLastChatSession(kbId);
   };
 
   // Send message
   const sendMessage = async (message, isVoice = false) => {
-    if (!sessionId || !message.trim()) return;
+    if (!message.trim()) return;
+    
+    // If no session exists, create one first
+    if (!sessionId && selectedKB) {
+      await createSession(selectedKB);
+      // Wait a moment for session to be created
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    if (!sessionId) {
+      toast.error('Please select a knowledge base first');
+      return;
+    }
 
     setIsLoading(true);
     const userMessage = {
@@ -218,6 +340,24 @@ const TutorPage = () => {
           <p className="text-gray-600 mt-2">Interactive learning with voice and text</p>
         </div>
         <div className="flex items-center space-x-4">
+          {selectedKB && (
+            <>
+              <button
+                onClick={createNewChat}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span>New Chat</span>
+              </button>
+              <button
+                onClick={() => setShowChatHistory(!showChatHistory)}
+                className="btn-secondary flex items-center space-x-2"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span>Chat History</span>
+              </button>
+            </>
+          )}
           <select
             value={selectedVoice}
             onChange={(e) => setSelectedVoice(e.target.value)}
@@ -233,8 +373,48 @@ const TutorPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Chat History Sidebar */}
+        {showChatHistory && (
+          <div className="lg:col-span-1">
+            <div className="card h-[600px] flex flex-col">
+              <div className="border-b border-gray-200 p-4">
+                <h3 className="font-semibold text-gray-900">Chat History</h3>
+                <p className="text-sm text-gray-500">Previous conversations</p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {chatSessions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No previous chats</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {chatSessions.map((room) => (
+                      <button
+                        key={room.roomId}
+                        onClick={() => loadChatSession(room.roomId)}
+                        className="w-full text-left p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                      >
+                        <h4 className="font-medium text-gray-900 text-sm mb-1">
+                          {room.title}
+                        </h4>
+                        <p className="text-xs text-gray-500 mb-1">
+                          {room.criteriaId?.name || 'Educational Criteria'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {room.messageCount} messages • {new Date(room.lastMessageAt).toLocaleDateString()}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Chat Area */}
-        <div className="lg:col-span-3">
+        <div className={showChatHistory ? "lg:col-span-3" : "lg:col-span-4"}>
           <div className="card h-[600px] flex flex-col">
             {/* Knowledge Base Selection */}
             {!selectedKB && (
@@ -409,10 +589,12 @@ const TutorPage = () => {
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="lg:col-span-1">
-          <Sidebar messages={messages} selectedKB={selectedKBData} />
-        </div>
+        {/* Sidebar - only show when chat history is not visible */}
+        {!showChatHistory && (
+          <div className="lg:col-span-1">
+            <Sidebar messages={messages} selectedKB={selectedKBData} />
+          </div>
+        )}
       </div>
 
       {/* Hidden Audio Element */}

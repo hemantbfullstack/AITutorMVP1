@@ -149,7 +149,6 @@ export default function ChatRoomSelector({
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="general">General</SelectItem>
                 <SelectItem value="educational-criteria">Educational Criteria</SelectItem>
-                <SelectItem value="ib-tutor">IB Tutor</SelectItem>
               </SelectContent>
             </Select>
           </div>

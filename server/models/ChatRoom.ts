@@ -21,7 +21,7 @@ const ChatRoomSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['educational-criteria', 'ib-tutor', 'general'],
+    enum: ['educational-criteria', 'general'],
     required: true,
     index: true
   },
@@ -37,21 +37,6 @@ const ChatRoomSchema = new mongoose.Schema({
   sessionId: {
     type: String,
     required: false
-  },
-  // For IB tutor chats
-  ibSubject: {
-    type: String,
-    enum: ['AA', 'AI'],
-    required: function() {
-      return this.type === 'ib-tutor';
-    }
-  },
-  ibLevel: {
-    type: String,
-    enum: ['HL', 'SL'],
-    required: function() {
-      return this.type === 'ib-tutor';
-    }
   },
   // Chat metadata
   messageCount: {
@@ -126,8 +111,6 @@ ChatRoomSchema.virtual('displayName').get(function() {
   switch (this.type) {
     case 'educational-criteria':
       return 'Educational Criteria Chat';
-    case 'ib-tutor':
-      return `IB ${this.ibSubject} ${this.ibLevel} Tutor`;
     case 'general':
       return 'General Chat';
     default:
