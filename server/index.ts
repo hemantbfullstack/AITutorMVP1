@@ -18,8 +18,8 @@ const corsOptions = {
     const allowedOrigins = process.env.NODE_ENV === 'production' 
       ? [
           process.env.CORS_ORIGIN, // Your custom domain
-          'https://yourdomain.com', // Placeholder for your real domain
-          'https://www.yourdomain.com' // Placeholder for www subdomain
+          'https://pedagogyy.com', // Your production domain
+          'https://www.pedagogyy.com' // Your www subdomain
         ].filter(Boolean)
       : [
           'http://localhost:3000', // React dev server
@@ -71,6 +71,28 @@ if (process.env.NODE_ENV === 'development') {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Security headers for production
+app.use((req, res, next) => {
+  // HTTPS redirect for production
+  if (process.env.NODE_ENV === 'production' && req.header('x-forwarded-proto') !== 'https') {
+    res.redirect(`https://${req.header('host')}${req.url}`);
+    return;
+  }
+  
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // HSTS header for production
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  
+  next();
+});
+
 // CORS test endpoint
 app.get('/api/cors-test', (req, res) => {
   res.json({
@@ -79,7 +101,7 @@ app.get('/api/cors-test', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     allowedOrigins: process.env.NODE_ENV === 'production' 
-      ? [process.env.CORS_ORIGIN, 'https://yourdomain.com', 'https://www.yourdomain.com'].filter(Boolean)
+      ? [process.env.CORS_ORIGIN, 'https://pedagogyy.com', 'https://www.pedagogyy.com'].filter(Boolean)
       : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000']
   });
 });

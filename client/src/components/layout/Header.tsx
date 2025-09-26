@@ -19,7 +19,10 @@ export default function Header() {
       await logout();
       window.location.href = "/";
     } catch (error) {
-      console.error("Logout failed:", error);
+      // Log error in development only
+      if (import.meta.env.DEV) {
+        console.error("Logout failed:", error);
+      }
     }
   };
 

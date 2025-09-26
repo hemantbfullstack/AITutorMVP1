@@ -89,7 +89,10 @@ export const AdminDashboard: React.FC = () => {
         description: "Failed to fetch dashboard data",
         variant: "destructive",
       });
-      console.error('Dashboard data fetch error:', error);
+      // Log error in development only
+      if (import.meta.env.DEV) {
+        console.error('Dashboard data fetch error:', error);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);

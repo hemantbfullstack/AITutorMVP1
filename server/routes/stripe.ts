@@ -249,12 +249,34 @@ router.post("/webhook", express.raw({ type: "application/json" }), (req: any, re
   switch (event.type) {
     case "checkout.session.completed":
       const session = event.data.object as Stripe.Checkout.Session;
-      // TODO: Mark user subscription active in DB
+      console.log("Payment successful for session:", session.id);
+      // TODO: Implement user subscription activation in database
+      // This would typically involve:
+      // 1. Finding the user by email or customer ID
+      // 2. Updating their plan in the database
+      // 3. Setting subscription status to active
       break;
     case "invoice.payment_failed":
-      // TODO: Handle subscription failed
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log("Payment failed for invoice:", invoice.id);
+      // TODO: Implement payment failure handling
+      // This would typically involve:
+      // 1. Finding the user by customer ID
+      // 2. Updating their subscription status
+      // 3. Sending notification email
+      break;
+    case "customer.subscription.updated":
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log("Subscription updated:", subscription.id);
+      // TODO: Implement subscription update handling
+      break;
+    case "customer.subscription.deleted":
+      const deletedSubscription = event.data.object as Stripe.Subscription;
+      console.log("Subscription cancelled:", deletedSubscription.id);
+      // TODO: Implement subscription cancellation handling
       break;
     default:
+      console.log(`Unhandled event type: ${event.type}`);
   }
 
   res.json({ received: true });

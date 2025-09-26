@@ -2,29 +2,42 @@ import mongoose from "mongoose";
 
 const MongoURI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/ai-tutor-mvp";
-console.log("🔗 Connecting to MongoDB...");
+
+// Only log in development
+if (process.env.NODE_ENV === 'development') {
+  console.log("🔗 Connecting to MongoDB...");
+}
+
 mongoose
   .connect(MongoURI, {
     autoIndex: true,    
   })
   .catch((error) => {
-    console.log("❌ MongoDB connection error:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("❌ MongoDB connection error:", error);
+    } else {
+      console.error("MongoDB connection error:", error.message);
+    }
   });
 const db = mongoose.connection;
 
 // Connection successful
 db.on("connected", () => {
-  console.log("✅ MongoDB connected successfully");
+  if (process.env.NODE_ENV === 'development') {
+    console.log("✅ MongoDB connected successfully");
+  }
 });
 
 // Connection error
 db.on("error", (err) => {
-  console.error("❌ MongoDB connection error:", err);
+  console.error("MongoDB connection error:", err.message);
 });
 
 // Disconnected
 db.on("disconnected", () => {
-  console.log("⚠️ MongoDB disconnected");
+  if (process.env.NODE_ENV === 'development') {
+    console.log("⚠️ MongoDB disconnected");
+  }
 });
 
 export default db;
