@@ -91,10 +91,8 @@ const register = async (req: any, res: any) => {
 const login = async (req: any, res: any) => {
   try {
     const { email, password } = req.body;
-console.log('Login attempt for email:', email);
     // Find user by email
     const user = await User.findOne({ email });
-    console.log('Login attempt for user:', user);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }

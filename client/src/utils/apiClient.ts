@@ -17,12 +17,8 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = TokenManager.getToken();
-    console.log('API Request:', config.url, 'Token available:', !!token);
     if (token && !TokenManager.isTokenExpired(token)) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Authorization header added');
-    } else {
-      console.log('No valid token available');
     }
     return config;
   },
@@ -34,7 +30,6 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle token expiration
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('API Response:', response.config.url, 'Status:', response.status);
     return response;
   },
   (error) => {

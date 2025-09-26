@@ -121,17 +121,13 @@ const wolframFull = async (req: any, res: any) => {
 // Wolfram image processing
 const wolframImage = async (req: any, res: any) => {
   try {
-    console.log("🖼️ Wolfram image endpoint called");
-    console.log("📁 Request file:", req.file ? `${req.file.originalname} (${req.file.size} bytes)` : "No file");
     
     const APPID = process.env.WOLFRAM_APP_ID;
     if (!APPID) {
-      console.log("❌ WOLFRAM_APP_ID is missing");
       return res.status(500).json({ error: "WOLFRAM_APP_ID is missing" });
     }
 
     if (!req.file) {
-      console.log("❌ No image file provided");
       return res.status(400).json({ error: "No image file provided" });
     }
 
@@ -145,13 +141,10 @@ const wolframImage = async (req: any, res: any) => {
       `&input=${encodeURIComponent(imageDataUrl)}` +
       `&output=json&podstate=Step-by-step+solution`;
 
-    console.log("🌐 Calling Wolfram API:", url.substring(0, 100) + "...");
     const response = await fetch(url);
-    console.log("📡 Wolfram API response status:", response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log("❌ Wolfram API error:", errorText);
       return res.status(502).json({ 
         error: `Wolfram image processing error ${response.status}`, 
         detail: errorText 
@@ -209,7 +202,6 @@ const wolframImage = async (req: any, res: any) => {
           visualizationBase64 = Buffer.from(imgBuffer).toString('base64');
         }
       } catch (err) {
-        console.log("Could not generate visualization from interpretation");
       }
     }
 
@@ -228,17 +220,13 @@ const wolframImage = async (req: any, res: any) => {
 // Wolfram Cloud image processing with full Wolfram Language capabilities
 const wolframCloudImage = async (req: any, res: any) => {
   try {
-    console.log("🌐 Wolfram Cloud image endpoint called");
-    console.log("📁 Request file:", req.file ? `${req.file.originalname} (${req.file.size} bytes)` : "No file");
     
     const APPID = process.env.WOLFRAM_APP_ID;
     if (!APPID) {
-      console.log("❌ WOLFRAM_APP_ID is missing");
       return res.status(500).json({ error: "WOLFRAM_APP_ID is missing" });
     }
 
     if (!req.file) {
-      console.log("❌ No image file provided");
       return res.status(400).json({ error: "No image file provided" });
     }
 
@@ -248,7 +236,6 @@ const wolframCloudImage = async (req: any, res: any) => {
 
     // For now, simulate Wolfram Cloud processing with enhanced analysis
     // In production, this would call a deployed Wolfram Cloud APIFunction
-    console.log("🌐 Simulating Wolfram Cloud API processing...");
     
     // Simulate the Wolfram Language processing that would happen in Wolfram Cloud
     const analysis = {
@@ -269,7 +256,6 @@ const wolframCloudImage = async (req: any, res: any) => {
       success: true
     };
 
-    console.log("✅ Wolfram Cloud analysis result:", data);
 
     // Process the Wolfram Cloud response
     const interpretation = buildInterpretation(data);
@@ -297,7 +283,6 @@ const wolframCloudImage = async (req: any, res: any) => {
 
 // Fallback to Wolfram Alpha for basic analysis
 async function fallbackToWolframAlpha(imageBase64: string, res: any) {
-  console.log("🔄 Falling back to Wolfram Alpha text analysis");
   
   const APPID = process.env.WOLFRAM_APP_ID;
   const imageDataUrl = `data:image/png;base64,${imageBase64}`;
@@ -379,7 +364,6 @@ async function generateSimpleVisualization(imageBase64: string): Promise<string 
     // and return a new visualization with analysis overlays
     return `data:image/png;base64,${imageBase64}`;
   } catch (error) {
-    console.log("Could not generate visualization:", error);
     return null;
   }
 }

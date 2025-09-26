@@ -125,7 +125,6 @@ router.delete('/:id', async (req: any, res: any) => {
 
       if (vectorsToDelete.length > 0) {
         await index.deleteMany(vectorsToDelete);
-        console.log('✅ Vectors deleted from Pinecone successfully');
       }
     } catch (error) {
       console.warn('⚠️ Failed to delete vectors from Pinecone:', error);
@@ -170,7 +169,6 @@ router.delete('/:id/files/:filename', async (req: any, res: any) => {
 
       if (vectorsToDelete.length > 0) {
         await index.deleteMany(vectorsToDelete);
-        console.log('✅ File vectors deleted from Pinecone successfully');
       }
     } catch (error) {
       console.warn('⚠️ Failed to delete file vectors from Pinecone:', error);

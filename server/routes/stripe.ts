@@ -255,7 +255,6 @@ router.post("/webhook", express.raw({ type: "application/json" }), (req: any, re
       // TODO: Handle subscription failed
       break;
     default:
-      console.log(`Unhandled event type ${event.type}`);
   }
 
   res.json({ received: true });

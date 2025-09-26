@@ -6,7 +6,6 @@ export async function processImageWithWolframCloud(imageFile: File): Promise<{
   interpretation: string;
   extractedData?: any;
 }> {
-  console.log("🌐 Processing image with Wolfram Cloud:", imageFile.name);
   
   const formData = new FormData();
   formData.append('image', imageFile);
@@ -18,7 +17,6 @@ export async function processImageWithWolframCloud(imageFile: File): Promise<{
       },
     });
     
-    console.log("✅ Wolfram Cloud response:", response.data);
     return response.data;
   } catch (error) {
     console.error("❌ Wolfram Cloud processing failed:", error);
@@ -28,7 +26,6 @@ export async function processImageWithWolframCloud(imageFile: File): Promise<{
 
 // Fallback to simple Wolfram Alpha for text-based queries
 export async function processTextWithWolframAlpha(query: string): Promise<string> {
-  console.log("📝 Processing text with Wolfram Alpha:", query);
   
   try {
     const response = await apiClient.post("/wolfram/simple", { query });

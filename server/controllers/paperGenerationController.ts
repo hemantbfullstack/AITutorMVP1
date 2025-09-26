@@ -10,11 +10,6 @@ const generatePaper = async (req: any, res: any) => {
     const actualCalcAllowed =
       calcAllowed !== undefined ? calcAllowed : paperType === "P2";
 
-    console.log(
-      `Generating ${subject} ${level} Paper ${paperType.slice(
-        1
-      )} with ${numQuestions} questions`
-    );
 
     const paperData = await paperGeneratorService.generatePaper(
       subject,

@@ -142,7 +142,7 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
         break;
       case "xʸ":
         // For now, just square it. In a real implementation, you'd need a second input
-        result = inputValue * inputValue;
+        result = Math.pow(inputValue, 2);
         break;
       case "eˣ":
         result = Math.exp(inputValue);
@@ -165,6 +165,16 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
       case "tanh":
         result = Math.tanh(inputValue);
         break;
+      case "(":
+        // For now, just add opening parenthesis to display
+        setDisplay(display + "(");
+        setWaitingForNewValue(false);
+        return;
+      case ")":
+        // For now, just add closing parenthesis to display
+        setDisplay(display + ")");
+        setWaitingForNewValue(false);
+        return;
       default:
         return;
     }
@@ -250,15 +260,17 @@ export function Calculator({ onSendToChat }: CalculatorProps) {
     { label: "sinh", type: "function", className: "calculator-button calculator-button-outline" },
     { label: "cosh", type: "function", className: "calculator-button calculator-button-outline" },
     { label: "tanh", type: "function", className: "calculator-button calculator-button-outline" },
-    { label: "=", type: "equals", className: "calculator-button calculator-button-primary row-span-2" },
+    { label: "=", type: "equals", className: "calculator-button calculator-button-primary" },
     
     { label: "eˣ", type: "function", className: "calculator-button calculator-button-outline" },
     { label: "10ˣ", type: "function", className: "calculator-button calculator-button-outline" },
     { label: "|x|", type: "function", className: "calculator-button calculator-button-outline" },
-    
     { label: "1/x", type: "function", className: "calculator-button calculator-button-outline" },
+    
     { label: "n!", type: "function", className: "calculator-button calculator-button-outline" },
     { label: "π", type: "constant", className: "calculator-button calculator-button-outline" },
+    { label: "(", type: "function", className: "calculator-button calculator-button-outline" },
+    { label: ")", type: "function", className: "calculator-button calculator-button-outline" },
     
     { label: "7", type: "number", className: "calculator-button calculator-button-secondary" },
     { label: "8", type: "number", className: "calculator-button calculator-button-secondary" },

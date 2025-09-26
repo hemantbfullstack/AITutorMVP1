@@ -44,7 +44,6 @@ router.post('/session', authenticateToken, async (req: any, res: any) => {
     });
 
     await chatRoom.save();
-    console.log('Created chat room:', roomId, 'for user:', userId);
 
     // Create chat session
     const sessionId = uuidv4();
@@ -98,17 +97,11 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
       return res.status(404).json({ error: "Chat session not found" });
     }
 
-    console.log(
-      "🎯 Using educational criteria:",
-      chatSession.criteriaId._id.toString()
-    );
-    console.log("📝 User message:", message);
 
     const startTime = Date.now();
 
     // Generate embedding for user message to find relevant instructional criteria
     const queryEmbedding = await generateEmbedding(message);
-    console.log("🧮 Embedding length:", queryEmbedding.length);
 
     // Query Pinecone for instructional criteria
     let searchResponse: any = { matches: [] };
@@ -116,7 +109,6 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
 
     try {
       const index = getIndex();
-      console.log("🌲 Pinecone index:", index);
       if (index && typeof index.query === "function") {
         searchResponse = await index.query({
           vector: queryEmbedding,
@@ -128,11 +120,6 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
         });
 
         pineconeAvailable = true;
-        console.log(
-          "🎯 Found instructional criteria:",
-          searchResponse.matches?.length || 0,
-          "matches"
-        );
       }
     } catch (err) {
       console.warn("⚠️ Pinecone search failed:", err);
@@ -147,18 +134,11 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
         (m: any) => m.score > 0.3 // Higher threshold for instructional relevance
       );
 
-      console.log("✅ Relevant instructional criteria:", relevantMatches.length);
-
       if (relevantMatches.length > 0) {
         instructionalContext = relevantMatches
           .map((m: any) => m.metadata?.text || "")
           .join("\n\n");
         hasRelevantCriteria = true;
-        console.log("📚 Instructional context length:", instructionalContext.length);
-        console.log("📄 Instructional context preview:", instructionalContext.substring(0, 200) + "...");
-      } else {
-        console.log("❌ No instructional criteria above threshold 0.3");
-        console.log("📊 All scores:", searchResponse.matches.map((m: any) => m.score));
       }
     }
 
@@ -169,7 +149,6 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
     const isCasualConversation = /^(hi|hello|hey|good morning|good afternoon|good evening|how are you|how's it going|what's up|thanks|thank you|bye|goodbye|see you|nice to meet you|pleasure|how do you do|good to see you|great to meet you|howdy|sup|what's happening|how's your day|how's everything|what's new|how's life)/i.test(message.trim());
     
     if (isCasualConversation) {
-      console.log("💬 Handling casual conversation");
       const messages = [
         {
           role: "system",
@@ -197,7 +176,6 @@ ${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoar
 
       response = await generateResponse(messages);
     } else {
-      console.log("🎓 Generating educational response with criteria guidance");
       const messages = [
         {
           role: "system",
@@ -434,7 +412,6 @@ router.post('/new-chat', authenticateToken, async (req: any, res: any) => {
     });
 
     await chatRoom.save();
-    console.log('Created new chat room:', roomId, 'for user:', userId);
 
     // Create new chat session
     const sessionId = uuidv4();
@@ -499,13 +476,8 @@ router.delete('/session/:sessionId', authenticateToken, async (req: any, res: an
 router.get('/debug/rooms', authenticateToken, async (req: any, res: any) => {
   try {
     const userId = req.user.id;
-    console.log('Debug - userId:', userId, 'type:', typeof userId);
-    
     const allRooms = await ChatRoom.find({});
-    console.log('Debug - all rooms count:', allRooms.length);
-    
     const userRooms = await ChatRoom.find({ userId });
-    console.log('Debug - user rooms count:', userRooms.length);
     
     res.json({
       success: true,

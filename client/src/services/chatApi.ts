@@ -33,9 +33,7 @@ export const chatRoomApi = {
     limit?: number;
     page?: number;
   }): Promise<ChatRoomsResponse> => {
-    console.log('API: Getting chat rooms with params:', params);
     const response = await apiClient.get<ChatRoomsResponse>('/chat-rooms/rooms', { params });
-    console.log('API: Chat rooms response:', response.data);
     return response.data;
   },
 

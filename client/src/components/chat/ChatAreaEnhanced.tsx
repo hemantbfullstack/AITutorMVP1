@@ -1,60 +1,34 @@
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from 'react-dom';
 import { useToast } from "@/hooks/use-toast";
 import apiClient from "@/utils/apiClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import MessageBubble from "./MessageBubble";
-import MessageInput from "./MessageInput";
 import ChatRoomSelector from "./ChatRoomSelector";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  detectDrawingIntent,
-  createUIAction,
   UIAction,
 } from "@/lib/intentDetector";
-import { parseGraphQuery, detectGraphIntent } from "@/lib/parseGraphQuery";
-import { emitGraphRender } from "@/lib/graphBus";
-import { TriangleType } from "@/components/tools/shapes/TriangleDrawer";
 import { fetchWolframImage, parsePlotQuery, processImageWithWolfram, detectVisualRequest } from "@/utils/wolframClient";
 import TutorSelector from "./TutorSelector";
-import {
-  Play,
-  Pause,
+import {  
   Volume2,
-  CheckCircle,
   GraduationCap,
-  User,
-  Copy,
   Settings,
   Crown,
-  CircleX,
   BookOpen,
-  Database,
-  Brain,
+  Database, 
   Lightbulb,
-  Target,
-  Zap,
   Sparkles,
   MessageSquare,
-  Plus,
   Menu,
   X
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { UsageIndicator } from "./UsageIndicator";
 import { isUsageLimitReached, getRemainingCredits } from "@/constants/plans";
 import { useChatRooms, useChatRoom } from "@/hooks/useChatRooms";
 import { chatApi } from "@/services/chatApi";
 import { ChatRoom, Message as ChatMessage } from "@/types/chat";
+import MessageInput from "./MessageInput";
 
 // Legacy Message interface for backward compatibility
 interface Message {
@@ -91,7 +65,6 @@ export default function ChatAreaEnhanced({
 }: ChatAreaProps) {
   // Chat Room State
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [showRoomSelector, setShowRoomSelector] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
 
   // Legacy state for backward compatibility
@@ -99,7 +72,6 @@ export default function ChatAreaEnhanced({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
-  const [selfTestResult, setSelfTestResult] = useState<string | null>(null);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("alloy");
   const [autoPlayVoice, setAutoPlayVoice] = useState(false);
   const [volume, setVolume] = useState(0.7);
@@ -131,16 +103,6 @@ export default function ChatAreaEnhanced({
     removeMessage 
   } = useChatRoom(selectedRoomId);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('ChatAreaEnhanced - Rooms state:', {
-      roomsCount: rooms.length,
-      roomsLoading,
-      selectedRoomId,
-      showSidebar
-    });
-  }, [rooms, roomsLoading, selectedRoomId, showSidebar]);
-
   // Convert ChatMessage to legacy Message format for compatibility
   const convertToLegacyMessage = (chatMessage: ChatMessage): Message => ({
     id: chatMessage._id,
@@ -153,38 +115,23 @@ export default function ChatAreaEnhanced({
     createdAt: chatMessage.createdAt
   });
 
-  // Convert legacy Message to ChatMessage format
-  const convertToChatMessage = (message: Message): Partial<ChatMessage> => ({
-    role: message.role,
-    content: message.content,
-    image: message.image ? { data: message.image, contentType: 'image/png' } : undefined,
-    wolframImage: message.wolframImage,
-    wolframInterpretation: message.wolframInterpretation,
-    wolframGenerated: message.wolframGenerated
-  });
-
   // Load the last active chat room
   const loadLastChat = async () => {
     try {
-      console.log('loadLastChat called with rooms:', rooms.length);
       if (rooms.length > 0) {
         // Find the most recently active room
         const activeRooms = rooms.filter(room => room.isActive);
-        console.log('Active rooms:', activeRooms.length);
         
         const lastRoom = activeRooms
           .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())[0];
         
-        console.log('Last room found:', lastRoom);
         
         if (lastRoom) {
-          console.log('Setting selected room:', lastRoom.roomId);
           setSelectedRoomId(lastRoom.roomId);
           setShowTutorLanding(false);
           
           // If it's an educational criteria room, set the criteria
           if (lastRoom.type === 'educational-criteria' && lastRoom.criteriaId) {
-            console.log('Setting criteria:', lastRoom.criteriaId);
             setSelectedCriteria(lastRoom.criteriaId);
           }
         }
@@ -201,9 +148,7 @@ export default function ChatAreaEnhanced({
 
   // Load last chat when rooms are loaded
   useEffect(() => {
-    console.log('Rooms changed:', rooms.length, 'rooms, selectedRoomId:', selectedRoomId);
     if (rooms.length > 0 && !selectedRoomId) {
-      console.log('Loading last chat...');
       loadLastChat();
     }
   }, [rooms, selectedRoomId]);
@@ -221,7 +166,6 @@ export default function ChatAreaEnhanced({
     if (savedRoomId && rooms.length > 0) {
       const roomExists = rooms.find(room => room.roomId === savedRoomId);
       if (roomExists) {
-        console.log('Restoring room from localStorage:', savedRoomId);
         setSelectedRoomId(savedRoomId);
         setShowTutorLanding(false);
         
@@ -543,8 +487,7 @@ export default function ChatAreaEnhanced({
 
   // Legacy send message function
   const handleLegacySendMessage = async (message: string, image?: File) => {
-    console.log("🔍 Legacy handleSendMessage called with:", { message, image: image?.name, hasImage: !!image });
-    
+  
     if (checkUsageLimit()) {
       toast({
         title: "Usage Limit Reached",

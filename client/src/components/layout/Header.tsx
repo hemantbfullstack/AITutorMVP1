@@ -36,7 +36,7 @@ export default function Header() {
   const adminNavItems = [
     { path: "/admin", label: "Dashboard", icon: BarChart3 },
     { path: "/admin/users", label: "Users", icon: Users },
-    { path: "/admin/sync", label: "Plan Sync", icon: Settings },
+    // { path: "/admin/sync", label: "Plan Sync", icon: Settings },
     { path: "/knowledge-base", label: "Knowledgebase", icon: Settings },
   ];
 

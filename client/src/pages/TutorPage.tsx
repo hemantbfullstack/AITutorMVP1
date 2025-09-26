@@ -48,7 +48,6 @@ const TutorPage = () => {
   const fetchChatSessions = async () => {
     try {
       const response = await axios.get('/api/chat-rooms/rooms');
-      console.log('Fetched chat rooms:', response.data);
       setChatSessions(response.data.rooms || []);
     } catch (error) {
       console.error('Error fetching chat sessions:', error);

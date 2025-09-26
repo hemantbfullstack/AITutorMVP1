@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { X, Calculator, TrendingUp, Brain, Shapes } from "lucide-react";
-import { Calculator as CalculatorTool } from "./Calculator";
-import { SimpleCalculator } from "./SimpleCalculator";
+import { X, Calculator as CalculatorIcon, TrendingUp, Brain, Shapes } from "lucide-react";
+import { Calculator } from "./Calculator";
 import { GraphTool } from "./GraphTool";
 import { WolframTool } from "./WolframTool";
 import { ShapesTab } from "./shapes/ShapesTab";
@@ -64,7 +63,7 @@ export default function MathToolsModal({
         <DialogHeader className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-500 to-blue-600 text-white">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              <Calculator className="w-6 h-6" />
+              <CalculatorIcon className="w-6 h-6" />
               Math Tools
             </DialogTitle>
             <Button
@@ -90,7 +89,7 @@ export default function MathToolsModal({
                 className="text-sm px-4 py-3 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
                 data-testid="tab-calculator"
               >
-                <Calculator className="w-4 h-4 mr-2" />
+                <CalculatorIcon className="w-4 h-4 mr-2" />
                 Calculator
               </TabsTrigger>
               <TabsTrigger
@@ -124,8 +123,8 @@ export default function MathToolsModal({
                 value="calculator"
                 className="h-full m-0 p-6 overflow-y-auto bg-gradient-to-br from-gray-50 to-blue-50"
               >
-                <div className="w-full max-w-2xl mx-auto">
-                  <SimpleCalculator />
+                <div className="w-full max-w-4xl mx-auto">
+                  <Calculator onSendToChat={sendToChatWithPayload} />
                 </div>
               </TabsContent>
 

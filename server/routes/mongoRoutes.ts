@@ -140,6 +140,9 @@ router.route('/chat/sessions/:id')
 
 router.get('/chat/sessions/user/:userId', authenticateToken, chatSessionController.getChatSessions);
 
+// Chat session statistics route
+router.get('/chat/sessions/stats', authenticateToken, chatSessionController.getChatSessionStats);
+
 
 // ============================================================================
 // MATH TOOLS ROUTES
@@ -217,6 +220,9 @@ router.route('/usage/:id')
   .get(authenticateToken, usageController.getUsageRecord)
   .put(authenticateToken, usageController.updateUsageRecord)
   .delete(authenticateToken, usageController.deleteUsageRecord);
+
+// Usage statistics route
+router.get('/usage/stats', authenticateToken, usageController.getUsageStats);
 
 // Note: getUsageByUser function needs to be implemented in usageController
 // router.get('/usage/user/:userId', authenticateToken, usageController.getUsageByUser);

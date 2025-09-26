@@ -25,17 +25,12 @@ export interface User {
 export const authService = {
   async login(data: LoginData): Promise<User> {
     try {
-      console.log("Attempting login to:", apiClient.defaults.baseURL + "/auth/login");
-      console.log("Login data:", { email: data.email, password: "[REDACTED]" });
-      
       const res = await apiClient.post("/auth/login", data);
-      console.log("Login response:", res);
       
       const { user, token } = res.data;
       // Store JWT token
       if (token) {
         TokenManager.setToken(token);
-        console.log("Token stored successfully");
       } else {
         console.error("No token received from server");
       }
@@ -73,7 +68,6 @@ export const authService = {
   async getCurrentUser(): Promise<User> {
     // With JWT, we can decode the token to get user info
     const token = TokenManager.getToken();
-    console.log("Getting current user, token:", token ? "exists" : "missing");
 
     if (!token) {
       throw new Error("No token found");
@@ -86,7 +80,6 @@ export const authService = {
     }
 
     const payload = TokenManager.getTokenPayload(token);
-    console.log("Token payload:", payload);
 
     if (!payload) {
       throw new Error("Invalid token");

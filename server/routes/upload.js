@@ -55,7 +55,6 @@ router.post('/', upload.single('file'), async (req, res) => {
 
     // Generate embeddings for each chunk
     const chunksWithEmbeddings = [];
-    console.log(`Processing ${processedData.chunks.length} chunks...`);
     
     for (let i = 0; i < processedData.chunks.length; i++) {
       const chunk = processedData.chunks[i];
@@ -74,7 +73,6 @@ router.post('/', upload.single('file'), async (req, res) => {
       }
       
       try {
-        console.log(`Processing chunk ${i}, length: ${trimmedChunk.length}`);
         const embedding = await generateEmbedding(trimmedChunk);
         
         chunksWithEmbeddings.push({
@@ -84,7 +82,6 @@ router.post('/', upload.single('file'), async (req, res) => {
           chunkIndex: i
         });
         
-        console.log(`Chunk ${i} processed successfully`);
       } catch (error) {
         console.error(`Failed to process chunk ${i}:`, error.message);
         throw new Error(`Failed to generate embedding for chunk ${i}: ${error.message}`);
@@ -95,7 +92,6 @@ router.post('/', upload.single('file'), async (req, res) => {
       throw new Error('No valid chunks were processed');
     }
     
-    console.log(`Successfully processed ${chunksWithEmbeddings.length} chunks`);
 
     let knowledgeBase;
     

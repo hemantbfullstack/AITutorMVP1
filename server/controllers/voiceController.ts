@@ -18,7 +18,6 @@ const textToSpeech = async (req: any, res: any) => {
     // Map format to OpenAI's supported format
     const openaiFormat = outputFormat === "wav" ? "wav" : "mp3";
 
-    console.log("TTS Request:", { text: text.substring(0, 100) + "...", voice: selectedVoice, model: defaultModel });
 
     const response = await fetch(
       "https://api.openai.com/v1/audio/speech",

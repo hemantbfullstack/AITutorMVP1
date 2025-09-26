@@ -59,13 +59,6 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
 
     // Generate embeddings for each chunk
     const chunksWithEmbeddings: any[] = [];
-    console.log(`Processing ${processedData.chunks.length} chunks...`);
-    
-    // Show sample chunks for debugging
-    console.log('📄 Sample chunks:');
-    for (let i = 0; i < Math.min(3, processedData.chunks.length); i++) {
-      console.log(`Chunk ${i}:`, processedData.chunks[i].substring(0, 100) + '...');
-    }
     
     // Check Pinecone metadata size limit (40KB per vector)
     const maxMetadataSize = 40 * 1024; // 40KB limit
@@ -73,8 +66,6 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
     const metadataOverhead = 1000; // Estimated overhead for other metadata fields
     const maxTextSize = maxMetadataSize - metadataOverhead;
     
-    console.log(`📊 Pinecone metadata limit: ${maxMetadataSize / 1024}KB`);
-    console.log(`📊 Max text per chunk: ${maxTextSize / 1024}KB`);
     
     // Check if any chunk exceeds Pinecone metadata limit
     const oversizedChunks = processedData.chunks.filter(chunk => chunk.length > maxTextSize);
@@ -92,7 +83,6 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
     const BATCH_SIZE = 10; // Process 10 chunks at a time
     const chunks = processedData.chunks;
     
-    console.log(`🚀 Processing ${chunks.length} chunks in parallel batches of ${BATCH_SIZE}`);
     
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
@@ -131,7 +121,6 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
         const validResults = batchResults.filter(result => result !== null);
         chunksWithEmbeddings.push(...validResults);
         
-        console.log(`✅ Processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)} (${validResults.length} chunks)`);
       } catch (error) {
         console.error(`❌ Batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, error);
         throw error;
@@ -142,7 +131,6 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
       throw new Error('No valid chunks were processed');
     }
     
-    console.log(`Successfully processed ${chunksWithEmbeddings.length} chunks`);
 
     let criteria;
     
@@ -202,7 +190,6 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
       
       // Check if we have a real Pinecone index or mock
       if (index && typeof index.upsert === 'function') {
-        console.log(`🚀 Uploading ${chunksWithEmbeddings.length} vectors to Pinecone in batches...`);
         
         const PINECONE_BATCH_SIZE = 100; // Pinecone recommends batches of 100
         const vectors = chunksWithEmbeddings.map((chunk, i) => ({
@@ -225,13 +212,10 @@ router.post('/', upload.single('file'), async (req: any, res: any) => {
         for (let i = 0; i < vectors.length; i += PINECONE_BATCH_SIZE) {
           const batch = vectors.slice(i, i + PINECONE_BATCH_SIZE);
           await index.upsert(batch);
-          console.log(`✅ Uploaded batch ${Math.floor(i / PINECONE_BATCH_SIZE) + 1}/${Math.ceil(vectors.length / PINECONE_BATCH_SIZE)} to Pinecone`);
         }
         
-        console.log('✅ All vectors stored in Pinecone successfully');
       } else {
         console.warn('⚠️ Pinecone not available - vectors not stored in vector database');
-        console.log('📝 Educational criteria saved to MongoDB only. To enable vector search, set up Pinecone API key.');
       }
     } catch (error) {
       console.warn('⚠️ Failed to store vectors in Pinecone:', error);

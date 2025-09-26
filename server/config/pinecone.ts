@@ -19,7 +19,6 @@ export const initializePinecone = async (): Promise<void> => {
       process.env.PINECONE_HOST!
     );
 
-    console.log("✅ Pinecone initialized successfully:", process.env.PINECONE_INDEX_NAME);
   } catch (error) {
     console.error("❌ Pinecone initialization error:", error);
     throw error;

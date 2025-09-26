@@ -19,9 +19,7 @@ export const useChatRooms = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Loading chat rooms with params:', params);
       const response = await chatRoomApi.getRooms(params);
-      console.log('Chat rooms loaded:', response.rooms);
       setRooms(response.rooms);
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to load chat rooms';
@@ -179,9 +177,7 @@ export const useChatRooms = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Loading chat rooms on mount...');
         const response = await chatRoomApi.getRooms();
-        console.log('Chat rooms loaded on mount:', response.rooms);
         setRooms(response.rooms);
       } catch (err: any) {
         const errorMessage = err.response?.data?.error || 'Failed to load chat rooms';

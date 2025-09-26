@@ -216,7 +216,6 @@ router.post("/image", upload.single('image'), async (req, res) => {
           visualizationBase64 = Buffer.from(imgBuffer).toString('base64');
         }
       } catch (err) {
-        console.log("Could not generate visualization from interpretation");
       }
     }
 
