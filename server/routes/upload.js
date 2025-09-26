@@ -182,4 +182,4 @@ router.get('/status/:jobId', async (req, res) => {
   res.json({ status: 'completed' });
 });
 
-module.exports = router;
+export default router;
