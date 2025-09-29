@@ -1,0 +1,18 @@
+version: "3.4"
+name: ${APP_NAME}
+services:
+  # Node api service
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: npm start
+    environment:
+      NODE_ENV: ${NODE_ENV}
+    ports:
+      - ${PORT}:${PORT}
+    volumes:
+      - .:/usr/src/app
+ 
+volumes:
+ 

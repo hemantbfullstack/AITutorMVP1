@@ -22,7 +22,7 @@ import {
   searchMessages,
   getMessageStats
 } from '../controllers/messageController.js';
-import { checkUsage } from 'server/checkUsageMiddleware.js';
+import { checkUsage } from '../checkUsageMiddleware.js';
 
 const router = express.Router();
 

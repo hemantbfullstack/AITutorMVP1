@@ -1,3 +1,15 @@
+// Load environment variables FIRST - before any other imports
+import dotenv from 'dotenv';
+
+// Load environment variables
+// In production, load from .env.production, otherwise load from .env
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: '.env.production' });
+} else {
+  dotenv.config();
+}
+
+// Now import other modules that might use environment variables
 import "./config/mongoDb";
 import express, { type Request, Response, NextFunction } from "express";
 import { setupVite, serveStatic, log } from "./vite";
