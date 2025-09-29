@@ -3,8 +3,22 @@ import fs from "fs";
 import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config.js";
 import { nanoid } from "nanoid";
+// New imports needed for ESM compatibility
+import { fileURLToPath } from 'url';
+import viteConfig from "vite.config";
+
+// --- Universal rootDir Logic ---
+let rootDir: string;
+
+if (typeof __dirname !== 'undefined') {
+  // 1. CJS Environment (Production build using esbuild)
+  rootDir = __dirname;
+} else {
+  // 2. ESM Environment (Development using tsx/nodemon)
+  const __filename = fileURLToPath(import.meta.url);
+  rootDir = path.dirname(__filename);
+}
 
 const viteLogger = createLogger();
 
@@ -67,7 +81,7 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  const distPath = path.resolve(rootDir, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
