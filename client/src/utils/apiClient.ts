@@ -2,7 +2,7 @@ import axios from 'axios';
 import { TokenManager } from './tokenManager';
 
 // API base URL for local development and production
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://pedagogyy.com';
 
 // Create axios instance
 export const apiClient = axios.create({

@@ -26,22 +26,24 @@ const corsOptions = {
   origin: function (origin: string | undefined, callback: Function) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = process.env.NODE_ENV === 'production' 
+
+    const allowedOrigins = process.env.NODE_ENV === 'production'
       ? [
-          process.env.CORS_ORIGIN, // Your custom domain
-          'https://pedagogyy.com', // Your production domain
-          'https://www.pedagogyy.com' // Your www subdomain
-        ].filter(Boolean)
+        process.env.CORS_ORIGIN, // Your custom domain
+        'https://pedagogyy.com', // Your production domain
+        'https://www.pedagogyy.com', // Your www subdomain,
+        "http://66.116.199.101:5000",
+        'http://pedagogyy.com'
+      ].filter(Boolean)
       : [
-          'http://localhost:3000', // React dev server
-          'http://localhost:5173', // Vite dev server
-          'http://localhost:5000', // Express server
-          'http://127.0.0.1:3000',
-          'http://127.0.0.1:5173',
-          'http://127.0.0.1:5000'
-        ];
-    
+        'http://localhost:3000', // React dev server
+        'http://localhost:5173', // Vite dev server
+        'http://localhost:5000', // Express server
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5000'
+      ];
+
     // Check if origin matches any allowed pattern
     const isAllowed = allowedOrigins.some(allowedOrigin => {
       if (typeof allowedOrigin === 'string') {
@@ -49,7 +51,7 @@ const corsOptions = {
       }
       return false;
     });
-    
+
     if (isAllowed) {
       callback(null, true);
     } else {
@@ -71,7 +73,7 @@ if (process.env.NODE_ENV === 'development') {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.header('Access-Control-Allow-Credentials', 'true');
-    
+
     if (req.method === 'OPTIONS') {
       res.sendStatus(200);
     } else {
@@ -90,18 +92,18 @@ app.use((req, res, next) => {
     res.redirect(`https://${req.header('host')}${req.url}`);
     return;
   }
-  
+
   // Security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
+
   // HSTS header for production
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
-  
+
   next();
 });
 
@@ -112,7 +114,7 @@ app.get('/api/cors-test', (req, res) => {
     origin: req.headers.origin,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    allowedOrigins: process.env.NODE_ENV === 'production' 
+    allowedOrigins: process.env.NODE_ENV === 'production'
       ? [process.env.CORS_ORIGIN, 'https://pedagogyy.com', 'https://www.pedagogyy.com'].filter(Boolean)
       : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000']
   });
@@ -158,7 +160,7 @@ app.use((req, res, next) => {
 
   // Use mongoRoutes for all API endpoints (with JWT authentication)
   app.use("/api", router);
-  
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -179,7 +181,7 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || "5000", 10);
   // Use localhost for local development, 0.0.0.0 for production deployment
   const host = process.env.NODE_ENV === 'production' ? "0.0.0.0" : "127.0.0.1";
-  
+
   server.listen(port, host, () => {
     log(`serving on ${host}:${port}`);
   });

@@ -1,8 +1,8 @@
 module.exports = {
   apps: [{
-    name: 'aitutor-kb',
+    name: 'aitutor-knowledgebased',
     script: 'dist/index.js',
-    cwd: '/var/www/aitutor-kb',
+    cwd: '/var/www/aitutor-knowledgebased',
     instances: 1,
     autorestart: true,
     watch: false,
