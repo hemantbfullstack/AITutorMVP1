@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import apiClient from "@/utils/apiClient";
 import MessageBubble from "./MessageBubble";
 import ChatRoomSelector from "./ChatRoomSelector";
+import ModernSidebar from "./ModernSidebar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,7 +22,8 @@ import {
   Sparkles,
   MessageSquare,
   Menu,
-  X
+  X,
+  ArrowDown
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isUsageLimitReached, getRemainingCredits } from "@/constants/plans";
@@ -66,6 +68,10 @@ export default function ChatAreaEnhanced({
   // Chat Room State
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   // Legacy state for backward compatibility
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -88,6 +94,8 @@ export default function ChatAreaEnhanced({
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesTopRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
   const { user: storeUser, refreshUser } = useAuth();
@@ -98,6 +106,9 @@ export default function ChatAreaEnhanced({
     room: currentRoom, 
     messages: roomMessages, 
     loading: roomLoading,
+    loadingMore,
+    hasMore,
+    loadMoreMessages,
     addMessage,
     updateMessage,
     removeMessage 
@@ -114,6 +125,13 @@ export default function ChatAreaEnhanced({
     wolframGenerated: chatMessage.wolframGenerated,
     createdAt: chatMessage.createdAt
   });
+
+  // Get current messages (either from room or legacy) - using useMemo to avoid dependency issues
+  const currentMessages = useMemo(() => {
+    return selectedRoomId && roomMessages.length > 0 
+      ? roomMessages.map(convertToLegacyMessage)
+      : messages;
+  }, [selectedRoomId, roomMessages, messages, convertToLegacyMessage]);
 
   // Load the last active chat room
   const loadLastChat = async () => {
@@ -176,6 +194,24 @@ export default function ChatAreaEnhanced({
       }
     }
   }, [rooms]);
+
+  // Handle responsive sidebar behavior
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) { // lg breakpoint
+        setShowSidebar(false);
+        setIsSidebarCollapsed(false);
+      } else {
+        setShowSidebar(true);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchCriteriaList = async () => {
     try {
@@ -243,7 +279,6 @@ export default function ChatAreaEnhanced({
     if (roomId === selectedRoomId) return;
     
     setSelectedRoomId(roomId);
-    setShowSidebar(false);
     
     // Clear legacy state when switching to new room
     setMessages([]);
@@ -633,29 +668,116 @@ export default function ChatAreaEnhanced({
   };
 
   // Handle new chat
-  const handleNewChat = () => {
-    setSelectedRoomId(null);
-    setCurrentSessionId(null);
-    setMessages([]);
-    setStreamingMessage("");
-    setIsStreaming(false);
-    setSelectedCriteria("");
-    setCriteriaSessionId("");
-    setShowCriteriaSelector(false);
-    setShowTutorLanding(true);
+  const handleNewChat = async () => {
+    if (isCreatingNewChat) return; // Prevent multiple clicks
+    
+    try {
+      setIsCreatingNewChat(true);
+      
+      // Create a new general chat room
+      const now = new Date();
+      const timestamp = now.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      const newRoom = await createRoom({
+        title: `New Chat - ${timestamp}`,
+        type: 'general',
+        ttsSettings: {
+          selectedVoiceId: selectedVoiceId,
+          autoPlayVoice: autoPlayVoice,
+          volume: volume
+        }
+      });
+
+      if (newRoom) {
+        // Set the new room as active
+        setSelectedRoomId(newRoom.roomId);
+        
+        // Clear all legacy state
+        setCurrentSessionId(null);
+        setMessages([]);
+        setStreamingMessage("");
+        setIsStreaming(false);
+        setSelectedCriteria("");
+        setCriteriaSessionId("");
+        setShowCriteriaSelector(false);
+        setShowTutorLanding(false);
+        
+        // Close sidebar on mobile after creating new chat
+        if (window.innerWidth < 1024) {
+          setShowSidebar(false);
+        }
+
+        // Show success toast
+        toast({
+          title: "New Chat Created",
+          description: "Your new chat room is ready!",
+        });
+      }
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create new chat room",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingNewChat(false);
+    }
   };
 
-  // Auto-scroll functionality
+  // Handle sidebar collapse toggle
+  const handleToggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  // Handle auto-play toggle
+  const handleToggleAutoPlay = () => {
+    setAutoPlayVoice(!autoPlayVoice);
+    localStorage.setItem('autoPlayVoice', (!autoPlayVoice).toString());
+  };
+
+  const handleScrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end"
+      });
+    }
+  };
+
+  // Auto-scroll functionality with debouncing
   const handleScroll = () => {
     if (messagesContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
       const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
       setShouldAutoScroll(isAtBottom);
+      
+      // Show/hide scroll to bottom button
+      setShowScrollToBottom(!isAtBottom && scrollHeight > clientHeight);
+      
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      // Check if user scrolled to top to load more messages (only after initial load)
+      if (scrollTop < 50 && hasMore && !loadingMore && roomMessages.length > 0 && hasInitiallyLoaded) {
+        // Debounce the load more call
+        scrollTimeoutRef.current = setTimeout(() => {
+          loadMoreMessages();
+        }, 300); // 300ms debounce
+      }
     }
   };
 
   useEffect(() => {
-    if (shouldAutoScroll && (messages.length > 0 || isStreaming)) {
+    const messageCount = selectedRoomId && roomMessages.length > 0 ? roomMessages.length : messages.length;
+    if (shouldAutoScroll && (messageCount > 0 || isStreaming)) {
       const timer = setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -664,13 +786,46 @@ export default function ChatAreaEnhanced({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [messages.length, isStreaming, shouldAutoScroll]);
+  }, [selectedRoomId, roomMessages.length, messages.length, isStreaming, shouldAutoScroll]);
+
+  // Cleanup scroll timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Set initial load flag when messages are first loaded
+  useEffect(() => {
+    if (selectedRoomId && roomMessages.length > 0 && !hasInitiallyLoaded) {
+      setHasInitiallyLoaded(true);
+    } else if (!selectedRoomId) {
+      setHasInitiallyLoaded(false);
+    }
+  }, [selectedRoomId, roomMessages.length, hasInitiallyLoaded]);
 
   useEffect(() => {
-    if (messages.length > 0) {
+    const messageCount = selectedRoomId && roomMessages.length > 0 ? roomMessages.length : messages.length;
+    if (messageCount > 0) {
       setShouldAutoScroll(true);
     }
-  }, [messages.length]);
+  }, [selectedRoomId, roomMessages.length, messages.length]);
+
+  // Auto-scroll to bottom when room changes
+  useEffect(() => {
+    if (selectedRoomId && roomMessages.length > 0) {
+      setShouldAutoScroll(true);
+      // Force scroll to bottom after a short delay to ensure DOM is updated
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "end"
+        });
+      }, 200);
+    }
+  }, [selectedRoomId, roomMessages.length]);
 
   // Listen for sendToChat events from tools
   useEffect(() => {
@@ -755,15 +910,10 @@ export default function ChatAreaEnhanced({
 
   const tutorInfo = getCurrentTutorInfo();
 
-  // Get current messages (either from room or legacy)
-  const currentMessages = selectedRoomId && roomMessages.length > 0 
-    ? roomMessages.map(convertToLegacyMessage)
-    : messages;
-
   // Show landing page if no room is selected and no legacy session
   if ((showTutorLanding || !selectedCriteria) && !selectedRoomId) {
     return (
-      <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-16">
+      <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-16">
         {/* Landing Page Header */}
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 shadow-sm">
           <div className="flex items-center justify-between">
@@ -881,121 +1031,122 @@ export default function ChatAreaEnhanced({
   }
 
   return (
-    <div className="flex h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-16">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-16">
+      {/* Mobile Overlay */}
       {showSidebar && (
-        <div className="w-80 border-r border-gray-200 bg-white">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Chat Rooms</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSidebar(false)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-          <ChatRoomSelector
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
+      {/* Modern Sidebar */}
+      {showSidebar && (
+        <div className="fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto">
+          <ModernSidebar
             selectedRoomId={selectedRoomId}
             onRoomSelect={handleRoomSelect}
+            onNewChat={handleNewChat}
+            onToggleTools={onToggleMobileTools}
+            onToggleAutoPlay={handleToggleAutoPlay}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={handleToggleSidebarCollapse}
+            onClose={() => setShowSidebar(false)}
+            isCreatingNewChat={isCreatingNewChat}
             className="h-full"
           />
         </div>
       )}
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 shadow-sm">
+      <div className="flex-1 flex flex-col h-full">
+        {/* Header - Fixed at top */}
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 shadow-sm">
           <div className="flex items-center justify-between gap-4">
-            {/* Room Info */}
+            {/* Left: Room Info and Mobile Menu */}
             <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg bg-gradient-to-r ${tutorInfo.gradient} shadow-sm`}>
-                {tutorInfo.icon}
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  {tutorInfo.title}
-                  <Lightbulb className="w-4 h-4 text-blue-600" />
-                </h1>
-                <p className="text-sm text-gray-600">{tutorInfo.description}</p>
-              </div>
-            </div>
-
-            {/* Voice Controls */}
-            <div className="flex items-center space-x-3 bg-gray-50 rounded-lg px-3 py-2">
-              <div className="flex items-center space-x-2">
-                <Volume2 className="w-4 h-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">Voice:</span>
-                <TutorSelector
-                  selectedVoiceId={selectedVoiceId}
-                  onVoiceChange={handleVoiceChange}
-                />
-              </div>
-              <div className="w-px h-6 bg-gray-300"></div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="auto-play-voice"
-                  checked={autoPlayVoice}
-                  onCheckedChange={handleAutoPlayChange}
-                  className="w-4 h-4"
-                />
-                <label htmlFor="auto-play-voice" className="text-sm font-medium text-gray-700 cursor-pointer">
-                  Auto-play
-                </label>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-2">
+              {/* Mobile Menu Button */}
               <Button
+                variant="ghost"
                 size="sm"
-                className="text-xs font-medium px-3 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:from-indigo-600 hover:to-blue-700"
-                onClick={onToggleMobileTools}
-              >
-                <Settings className="w-4 h-4 mr-1" />
-                Tools
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={handleNewChat}
-                className="text-xs font-medium px-3 py-2 rounded-lg"
-              >
-                <Sparkles className="w-4 h-4 mr-1" />
-                New
-              </Button>
-
-              <Button
-                variant="outline"
                 onClick={() => setShowSidebar(!showSidebar)}
-                className="text-xs font-medium px-3 py-2 rounded-lg"
+                className="lg:hidden"
               >
-                <Menu className="w-4 h-4 mr-1" />
-                Rooms
+                <Menu className="w-4 h-4" />
               </Button>
+              
+              {/* Room Info */}
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-lg bg-gradient-to-r ${tutorInfo.gradient} shadow-sm`}>
+                  {tutorInfo.icon}
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    {tutorInfo.title}
+                    <Lightbulb className="w-4 h-4 text-blue-600" />
+                  </h1>
+                  <p className="text-sm text-gray-600">{tutorInfo.description}</p>
+                </div>
+              </div>
             </div>
 
-            {/* Credits Badge */}
-            <div className="flex items-center gap-1 px-2 py-1 bg-amber-100 border border-amber-200 rounded-full text-xs font-medium text-amber-800">
-              <Crown className="w-3 h-3" />
-              <span>{storeUser && storeUser.planId ? getRemainingCredits({
-                planId: storeUser.planId as string,
-                usageCount: storeUser.usageCount || 0
-              }) : 0}</span>
+            {/* Right: Voice Controls and Credits */}
+            <div className="flex items-center space-x-4">
+              {/* Voice Controls - Hidden on mobile */}
+              <div className="hidden md:flex items-center space-x-3 bg-gray-50 rounded-lg px-3 py-2">
+                <div className="flex items-center space-x-2">
+                  <Volume2 className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Voice:</span>
+                  <TutorSelector
+                    selectedVoiceId={selectedVoiceId}
+                    onVoiceChange={handleVoiceChange}
+                  />
+                </div>
+                <div className="w-px h-6 bg-gray-300"></div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="auto-play-voice"
+                    checked={autoPlayVoice}
+                    onCheckedChange={handleAutoPlayChange}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="auto-play-voice" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    Auto-play
+                  </label>
+                </div>
+              </div>
+
+              {/* Credits Badge */}
+              <div className="flex items-center gap-1 px-2 py-1 bg-amber-100 border border-amber-200 rounded-full text-xs font-medium text-amber-800">
+                <Crown className="w-3 h-3" />
+                <span>{storeUser && storeUser.planId ? getRemainingCredits({
+                  planId: storeUser.planId as string,
+                  usageCount: storeUser.usageCount || 0
+                }) : 0}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Messages Area */}
+        {/* Messages Container - Scrollable */}
         <div
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-gradient-to-b from-white to-gray-50"
+          className="flex-1 overflow-y-auto px-4 py-2 bg-gradient-to-b from-white to-gray-50"
           onScroll={handleScroll}
         >
+          {/* Loading more messages indicator */}
+          {loadingMore && (
+            <div ref={messagesTopRef} className="flex items-center justify-center py-4">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-sm text-gray-600">Loading more messages...</span>
+              </div>
+            </div>
+          )}
+
           {/* Welcome Message */}
           {currentMessages.length === 0 && !isStreaming && (
-            <div className="flex justify-center">
+            <div className="flex justify-center py-8">
               <div className="max-w-4xl lg:max-w-5xl w-full">
                 <MessageBubble
                   role="assistant"
@@ -1010,7 +1161,7 @@ export default function ChatAreaEnhanced({
           )}
 
           {/* Messages */}
-          <div className="max-w-4xl lg:max-w-5xl mx-auto space-y-6 sm:space-y-8">
+          <div className="max-w-4xl lg:max-w-5xl mx-auto space-y-3">
             {currentMessages.map((message, index) => (
               <MessageBubble
                 key={`${index}-${selectedVoiceId}`}
@@ -1057,8 +1208,21 @@ export default function ChatAreaEnhanced({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Input */}
-        <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200 p-4 shadow-lg">
+        {/* Floating Scroll to Bottom Button */}
+        {showScrollToBottom && (
+          <div className="fixed bottom-20 right-6 z-50">
+            <Button
+              onClick={handleScrollToBottom}
+              className="rounded-full w-12 h-12 bg-blue-600 hover:bg-blue-700 shadow-lg"
+              size="sm"
+            >
+              <ArrowDown className="w-5 h-5 text-white" />
+            </Button>
+          </div>
+        )}
+
+        {/* Message Input - Fixed at bottom */}
+        <div className="sticky bottom-0 bg-white shadow-inner border-t border-gray-200 p-4">
           <div className="max-w-4xl mx-auto">
             <MessageInput
               onSendMessage={handleSendMessage}
@@ -1071,3 +1235,4 @@ export default function ChatAreaEnhanced({
     </div>
   );
 }
+

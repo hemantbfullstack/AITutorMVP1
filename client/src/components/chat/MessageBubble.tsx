@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import "katex/dist/katex.min.css";
+import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { 
   Pause, 
   Play, 
@@ -53,6 +53,20 @@ export default function MessageBubble({
   autoPlayVoice = false,
   volume = 0.7
 }: MessageBubbleProps) {
+  
+  // MathJax configuration
+  const mathJaxConfig = {
+    tex: {
+      inlineMath: [['\\(', '\\)']],
+      displayMath: [['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    }
+  };
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,40 +191,14 @@ export default function MessageBubble({
     return renderLaTeXContent(text);
   };
 
-  // Render LaTeX content (extracted from original renderContent)
+  // Render LaTeX content with MathJax
   const renderLaTeXContent = (text: string) => {
-    // Simple LaTeX rendering - split by $ and $$ delimiters
-    const parts = text.split(/(\$\$[^$]+\$\$|\$[^$]+\$)/);
-    
-    return parts.map((part, index) => {
-      if (part.startsWith('$$') && part.endsWith('$$')) {
-        // Block math
-        const math = part.slice(2, -2);
-        return (
-          <div key={index} className="my-3 text-center">
-            <span className="inline-block bg-slate-50 px-4 py-2 rounded-md font-mono text-sm">
-              {math}
-            </span>
-          </div>
-        );
-      } else if (part.startsWith('$') && part.endsWith('$')) {
-        // Inline math
-        const math = part.slice(1, -1);
-        return (
-          <span key={index} className="bg-slate-100 px-1 py-0.5 rounded font-mono text-sm">
-            {math}
-          </span>
-        );
-      } else {
-        // Regular text with line breaks
-        return part.split('\n').map((line, lineIndex) => (
-          <span key={`${index}-${lineIndex}`}>
-            {line}
-            {lineIndex < part.split('\n').length - 1 && <br />}
-          </span>
-        ));
-      }
-    });
+    // MathJax can handle LaTeX directly, so we just need to wrap it
+    return (
+      <MathJax>
+        <div dangerouslySetInnerHTML={{ __html: text }} />
+      </MathJax>
+    );
   };
 
   const handlePlayVoice = async () => {
@@ -307,143 +295,149 @@ export default function MessageBubble({
 
   if (role === "user") {
     return (
-      <div className="flex gap-3 mb-6 justify-end">
-        <div className="flex-1 max-w-3xl">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl p-4 shadow-lg">
-            {image && (
-              <div className="mb-3">
-                <img 
-                  src={image} 
-                  alt="Uploaded image" 
-                  className="max-w-full rounded-lg border border-white/20"
-                />
+      <MathJaxContext config={mathJaxConfig}>
+        <div className="flex gap-3 py-3 justify-end">
+          <div className="flex-1 max-w-3xl">
+            <div className="bg-blue-50 border-l-4 border-blue-400 rounded-xl p-4 shadow-sm relative">
+              {image && (
+                <div className="mb-3">
+                  <img 
+                    src={image} 
+                    alt="Uploaded image" 
+                    className="max-w-full rounded-lg border border-blue-200"
+                  />
+                </div>
+              )}
+              <div className="text-sm leading-relaxed text-gray-800">
+                {renderContent(content)}
               </div>
-            )}
-            <div className="text-sm leading-relaxed">
-              {renderContent(content)}
+              {timestamp && (
+                <div className="absolute top-2 right-3 text-xs text-gray-500 font-medium">
+                  {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              )}
             </div>
           </div>
-          {timestamp && (
-            <div className="text-xs text-gray-500 mt-2 text-right font-medium">{timestamp}</div>
-          )}
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg flex-shrink-0">
+            You
+          </div>
         </div>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg">
-          You
-        </div>
-      </div>
+      </MathJaxContext>
     );
   }
 
   if (role === "assistant" || role === "system") {
     return (
-      <div className="flex gap-3 mb-6">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg">
-          AI
-        </div>
-        
-        <div className="flex-1 max-w-3xl space-y-2">
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-4 shadow-md">
-            {image && (
-              <div className="mb-3">
-                <img 
-                  src={image} 
-                  alt="User uploaded image" 
-                  className="max-w-full rounded-lg border border-gray-200"
-                />
-              </div>
-            )}
-            
-            {wolframImage && (
-              <div className="mb-3">
-                <div className="relative">
+      <MathJaxContext config={mathJaxConfig}>
+        <div className="flex gap-3 py-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg flex-shrink-0">
+            AI
+          </div>
+          
+          <div className="flex-1 max-w-3xl space-y-2">
+            <div className="bg-green-50 border-l-4 border-green-400 rounded-xl p-4 shadow-sm relative">
+              {image && (
+                <div className="mb-3">
                   <img 
-                    src={wolframImage} 
-                    alt="Wolfram generated visualization" 
-                    className="max-w-full rounded-lg border border-blue-200"
+                    src={image} 
+                    alt="User uploaded image" 
+                    className="max-w-full rounded-lg border border-green-200"
                   />
-                  {wolframGenerated && (
-                    <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      Generated by Wolfram
+                </div>
+              )}
+              
+              {wolframImage && (
+                <div className="mb-3">
+                  <div className="relative">
+                    <img 
+                      src={wolframImage} 
+                      alt="Wolfram generated visualization" 
+                      className="max-w-full rounded-lg border border-blue-200"
+                    />
+                    {wolframGenerated && (
+                      <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                        Generated by Wolfram
+                      </div>
+                    )}
+                  </div>
+                  {wolframInterpretation && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800 font-medium mb-1">Wolfram Analysis:</p>
+                      <p className="text-sm text-blue-700">{wolframInterpretation}</p>
                     </div>
                   )}
                 </div>
-                {wolframInterpretation && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800 font-medium mb-1">Wolfram Analysis:</p>
-                    <p className="text-sm text-blue-700">{wolframInterpretation}</p>
+              )}
+              
+              <div className="prose prose-sm max-w-none">
+                {isStreaming ? (
+                  <div className="text-gray-800 text-sm leading-relaxed">
+                    {content}
+                    <span className="animate-pulse text-green-600">▊</span>
                   </div>
+                ) : (
+                  renderContent(content)
                 )}
               </div>
-            )}
-            
-            <div className="prose prose-sm max-w-none">
-              {isStreaming ? (
-                <div className="text-gray-800 text-sm leading-relaxed">
-                  {content}
-                  <span className="animate-pulse text-green-600">▊</span>
+              
+              {timestamp && (
+                <div className="absolute top-2 right-3 text-xs text-gray-500 font-medium">
+                  {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
-              ) : (
-                renderContent(content)
               )}
+            </div>
+            
+            {/* Action buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePlayVoice}
+                disabled={isLoading || isStreaming}
+                className="flex items-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                    Loading...
+                  </>
+                ) : isPlaying ? (
+                  <>
+                    <Pause className="w-4 h-4" />
+                    Pause
+                  </>
+                ) : isStreaming ? (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Wait for completion...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Play Voice
+                  </>
+                )}
+              </Button>
+              
+              {/* Copy button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyToClipboard}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
             </div>
           </div>
           
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
-                         <Button
-               variant="outline"
-               size="sm"
-               onClick={handlePlayVoice}
-               disabled={isLoading || isStreaming}
-               className="flex items-center gap-2"
-             >
-                             {isLoading ? (
-                 <>
-                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                   Loading...
-                 </>
-               ) : isPlaying ? (
-                 <>
-                   <Pause className="w-4 h-4" />
-                   Pause
-                 </>
-               ) : isStreaming ? (
-                 <>
-                   <Play className="w-4 h-4" />
-                   Wait for completion...
-                 </>
-               ) : (
-                 <>
-                   <Play className="w-4 h-4" />
-                   Play Voice
-                 </>
-               )}
-            </Button>
-            
-            {/* Copy button */}
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopyToClipboard}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
-          </div>
-          
-          {timestamp && (
-            <div className="text-xs text-gray-600 font-medium">{timestamp}</div>
-          )}
+          <audio
+            ref={audioRef}
+            onEnded={handleAudioEnded}
+            onError={() => setIsPlaying(false)}
+          />
         </div>
-        
-        <audio
-          ref={audioRef}
-          onEnded={handleAudioEnded}
-          onError={() => setIsPlaying(false)}
-          volume={volume}
-        />
-      </div>
+      </MathJaxContext>
     );
   }
 

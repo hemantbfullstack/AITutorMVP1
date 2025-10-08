@@ -93,11 +93,37 @@ const getMessagesByRoom = async (req: any, res: any) => {
     let query: any = { roomId };
     
     if (before) {
-      query.createdAt = { $lt: new Date(before) };
+      // If before is a valid ObjectId, use it for pagination
+      if (before.match(/^[0-9a-fA-F]{24}$/)) {
+        // Get the message to find its createdAt date
+        const beforeMessage = await Message.findById(before);
+        if (beforeMessage) {
+          query.createdAt = { $lt: beforeMessage.createdAt };
+        }
+      } else {
+        // If it's a date string, parse it
+        const beforeDate = new Date(before);
+        if (!isNaN(beforeDate.getTime())) {
+          query.createdAt = { $lt: beforeDate };
+        }
+      }
     }
     
     if (after) {
-      query.createdAt = { $gt: new Date(after) };
+      // If after is a valid ObjectId, use it for pagination
+      if (after.match(/^[0-9a-fA-F]{24}$/)) {
+        // Get the message to find its createdAt date
+        const afterMessage = await Message.findById(after);
+        if (afterMessage) {
+          query.createdAt = { $gt: afterMessage.createdAt };
+        }
+      } else {
+        // If it's a date string, parse it
+        const afterDate = new Date(after);
+        if (!isNaN(afterDate.getTime())) {
+          query.createdAt = { $gt: afterDate };
+        }
+      }
     }
 
     const messages = await Message.find(query)

@@ -213,6 +213,8 @@ export const useChatRoom = (roomId: string | null) => {
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -251,7 +253,9 @@ export const useChatRoom = (roomId: string | null) => {
       setLoading(true);
       setError(null);
       const response = await messageApi.getMessagesByRoom(roomId, params);
+      // Messages are already in chronological order from backend
       setMessages(response.messages);
+      setHasMore(response.pagination.hasNext);
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to load messages';
       setError(errorMessage);
@@ -287,6 +291,44 @@ export const useChatRoom = (roomId: string | null) => {
     }
   }, [roomId, toast]);
 
+  // Load more messages for infinite scroll
+  const loadMoreMessages = useCallback(async () => {
+    if (!roomId || !hasMore || loadingMore) return;
+    
+    try {
+      setLoadingMore(true);
+      setError(null);
+      
+      // Get the oldest message ID for pagination (first message in chronological order)
+      const oldestMessage = messages[0];
+      const beforeId = oldestMessage?._id;
+      
+      const response = await messageApi.getMessagesByRoom(roomId, {
+        limit: 20,
+        before: beforeId
+      });
+      
+      // Filter out any duplicate messages and prepend older messages to the beginning
+      setMessages(prev => {
+        const existingIds = new Set(prev.map(msg => msg._id));
+        const newMessages = response.messages.filter(msg => !existingIds.has(msg._id));
+        // Prepend older messages to the beginning to maintain chronological order
+        return [...newMessages, ...prev];
+      });
+      setHasMore(response.pagination.hasNext);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Failed to load more messages';
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [roomId, hasMore, loadingMore, messages, toast]);
+
   // Add new message to the list
   const addMessage = useCallback((message: Message) => {
     setMessages(prev => [...prev, message]);
@@ -308,21 +350,25 @@ export const useChatRoom = (roomId: string | null) => {
   useEffect(() => {
     if (roomId) {
       loadRoom();
-      loadLatestMessages();
+      loadMessages({ limit: 20 }); // Load only 20 messages by default
     } else {
       setRoom(null);
       setMessages([]);
+      setHasMore(true);
     }
-  }, [roomId, loadRoom, loadLatestMessages]);
+  }, [roomId, loadRoom, loadMessages]);
 
   return {
     room,
     messages,
     loading,
+    loadingMore,
+    hasMore,
     error,
     loadRoom,
     loadMessages,
     loadLatestMessages,
+    loadMoreMessages,
     addMessage,
     updateMessage,
     removeMessage
