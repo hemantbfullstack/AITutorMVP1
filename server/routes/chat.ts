@@ -189,6 +189,7 @@ CRITICAL INSTRUCTIONS:
 - Use appropriate terminology and concepts for ${chatSession.criteriaId.level} level
 - Follow ${chatSession.criteriaId.educationalBoard} assessment criteria and command terms
 
+
 Educational Criteria Guidelines:
 ${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} teaching approaches and curriculum standards."}`,
         },

@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   UIAction,
 } from "@/lib/intentDetector";
-import { fetchWolframImage, parsePlotQuery, processImageWithWolfram, detectVisualRequest } from "@/utils/wolframClient";
+import { fetchWolframImage, parsePlotQuery, processImageWithWolfram, detectVisualRequest, generateWolframQuery } from "@/utils/wolframClient";
 import TutorSelector from "./TutorSelector";
 import {  
   Volume2,
@@ -399,26 +399,34 @@ export default function ChatAreaEnhanced({
     setStreamingMessage("Tutor is thinking...");
 
     try {
-      // Check for visual requests (graphs, plots, equations)
+      // Check for visual requests (graphs, plots, equations, diagrams)
       const needsVisual = detectVisualRequest(message);
       if (needsVisual) {
-        const plotQuery = parsePlotQuery(message);
-        if (plotQuery) {
+        const wolframQuery = generateWolframQuery(message);
+        if (wolframQuery) {
           try {
-            const imageBase64 = await fetchWolframImage(plotQuery);
+            const imageBase64 = await fetchWolframImage(wolframQuery);
+            
+            // Create a more contextual message based on the request type
+            let visualMessage = "";
+            if (message.toLowerCase().includes('explain') || message.toLowerCase().includes('help with')) {
+              visualMessage = `Here's a visual representation to help explain ${message.replace(/(?:explain|help with|illustrate|demonstrate|show how)\s+/i, "").replace(/\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i, "")}:`;
+            } else if (message.toLowerCase().includes('show me') || message.toLowerCase().includes('create') || message.toLowerCase().includes('generate')) {
+              visualMessage = `Here's the visualization you requested:`;
+            } else {
+              visualMessage = `Here's the visualization of ${wolframQuery.replace(/^plot\s+/i, "")}:`;
+            }
             
             const wolframMessage = await chatApi.sendWolframMessage(
               selectedRoomId!,
-              `Here's the visualization of ${plotQuery.replace(/^plot\s+/i, "")}:`,
+              visualMessage,
               imageBase64
             );
             addMessage(wolframMessage);
-            
-            // Also get AI explanation
-            await processTextMessageWithRoom(`Please explain this mathematical concept: ${message}`);
             return;
           } catch (error) {
             console.error("❌ Wolfram processing failed:", error);
+            // Fall through to regular AI processing if Wolfram fails
           }
         }
       }
@@ -445,6 +453,8 @@ export default function ChatAreaEnhanced({
           message,
           isVoice: false
         });
+
+        // Visual processing is handled client-side only
 
         const assistantMessage = await chatApi.sendTextMessage(
           selectedRoomId,
@@ -545,22 +555,30 @@ export default function ChatAreaEnhanced({
   const processTextMessage = async (message: string) => {
     const needsVisual = detectVisualRequest(message);
     if (needsVisual) {
-      const plotQuery = parsePlotQuery(message);
-      if (plotQuery) {
+      const wolframQuery = generateWolframQuery(message);
+      if (wolframQuery) {
         try {
-          const imageBase64 = await fetchWolframImage(plotQuery);
+          const imageBase64 = await fetchWolframImage(wolframQuery);
+          
+          // Create a more contextual message based on the request type
+          let visualMessage = "";
+          if (message.toLowerCase().includes('explain') || message.toLowerCase().includes('help with')) {
+            visualMessage = `Here's a visual representation to help explain ${message.replace(/(?:explain|help with|illustrate|demonstrate|show how)\s+/i, "").replace(/\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i, "")}:`;
+          } else if (message.toLowerCase().includes('show me') || message.toLowerCase().includes('create') || message.toLowerCase().includes('generate')) {
+            visualMessage = `Here's the visualization you requested:`;
+          } else {
+            visualMessage = `Here's the visualization of ${wolframQuery.replace(/^plot\s+/i, "")}:`;
+          }
           
           const wolframMessage: Message = {
             id: crypto.randomUUID(),
             role: "assistant",
-            content: `Here's the visualization of ${plotQuery.replace(/^plot\s+/i, "")}:`,
+            content: visualMessage,
             createdAt: new Date().toISOString(),
             wolframImage: imageBase64,
             wolframGenerated: true,
           };
           setMessages((prev) => [...prev, wolframMessage]);
-          
-          await sendCriteriaMessage(`Please explain this mathematical concept: ${message}`);
           return;
         } catch (error) {
           console.error("❌ Wolfram processing failed:", error);
@@ -590,6 +608,8 @@ export default function ChatAreaEnhanced({
         message,
         isVoice: false
       });
+
+      // Visual processing is handled client-side only
 
       const assistantMessage: Message = {
         id: crypto.randomUUID(),

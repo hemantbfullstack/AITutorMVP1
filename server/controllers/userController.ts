@@ -40,20 +40,7 @@ const register = async (req: any, res: any) => {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Import plans to get credit allocation
-    const { plans } = await import('../../shared/constants.js');
-    
-    // Get initial credit allocation based on role
-    const getInitialCredits = (userRole: string) => {
-      if (userRole === 'teacher') {
-        return 75; // Teachers get 50 credits
-      } else if (userRole === 'student') {
-        return 75; // Students get 10 credits (free plan limit)
-      }
-      return 10; // Default for other roles
-    };
+    const hashedPassword = await bcrypt.hash(password, 12);   
 
     // Create new user with initial credits
     const user = new User({
@@ -63,7 +50,7 @@ const register = async (req: any, res: any) => {
       password: hashedPassword,
       isLocalUser: true,
       role,
-      usageCount: 75, // Start with 0 usage
+      usageCount: 0, // Start with 0 usage
       usageResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Reset in 30 days
     });
 

@@ -215,6 +215,8 @@ const TutorPage = () => {
         isVoice
       });
 
+      // Visual processing is handled client-side only
+
       const assistantMessage = {
         role: 'assistant',
         content: response.data.response.content,
