@@ -4,26 +4,31 @@ import apiClient from "@/utils/apiClient";
 import MessageBubble from "./MessageBubble";
 import ChatRoomSelector from "./ChatRoomSelector";
 import ModernSidebar from "./ModernSidebar";
+import TutorHeader from "../layout/TutorHeader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { UIAction } from "@/lib/intentDetector";
 import {
-  UIAction,
-} from "@/lib/intentDetector";
-import { fetchWolframImage, parsePlotQuery, processImageWithWolfram, detectVisualRequest, generateWolframQuery } from "@/utils/wolframClient";
+  fetchWolframImage,
+  parsePlotQuery,
+  processImageWithWolfram,
+  detectVisualRequest,
+  generateWolframQuery,
+} from "@/utils/wolframClient";
 import TutorSelector from "./TutorSelector";
-import {  
+import {
   Volume2,
   GraduationCap,
   Settings,
   Crown,
   BookOpen,
-  Database, 
+  Database,
   Lightbulb,
   Sparkles,
   MessageSquare,
   Menu,
   X,
-  ArrowDown
+  ArrowDown,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isUsageLimitReached, getRemainingCredits } from "@/constants/plans";
@@ -92,6 +97,7 @@ export default function ChatAreaEnhanced({
   const [showTutorLanding, setShowTutorLanding] = useState(true);
 
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesTopRef = useRef<HTMLDivElement>(null);
@@ -102,16 +108,16 @@ export default function ChatAreaEnhanced({
 
   // Use chat room hooks
   const { rooms, loading: roomsLoading, createRoom } = useChatRooms();
-  const { 
-    room: currentRoom, 
-    messages: roomMessages, 
+  const {
+    room: currentRoom,
+    messages: roomMessages,
     loading: roomLoading,
     loadingMore,
     hasMore,
     loadMoreMessages,
     addMessage,
     updateMessage,
-    removeMessage 
+    removeMessage,
   } = useChatRoom(selectedRoomId);
 
   // Convert ChatMessage to legacy Message format for compatibility
@@ -123,12 +129,12 @@ export default function ChatAreaEnhanced({
     wolframImage: chatMessage.wolframImage,
     wolframInterpretation: chatMessage.wolframInterpretation,
     wolframGenerated: chatMessage.wolframGenerated,
-    createdAt: chatMessage.createdAt
+    createdAt: chatMessage.createdAt,
   });
 
   // Get current messages (either from room or legacy) - using useMemo to avoid dependency issues
   const currentMessages = useMemo(() => {
-    return selectedRoomId && roomMessages.length > 0 
+    return selectedRoomId && roomMessages.length > 0
       ? roomMessages.map(convertToLegacyMessage)
       : messages;
   }, [selectedRoomId, roomMessages, messages, convertToLegacyMessage]);
@@ -138,24 +144,26 @@ export default function ChatAreaEnhanced({
     try {
       if (rooms.length > 0) {
         // Find the most recently active room
-        const activeRooms = rooms.filter(room => room.isActive);
-        
-        const lastRoom = activeRooms
-          .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())[0];
-        
-        
+        const activeRooms = rooms.filter((room) => room.isActive);
+
+        const lastRoom = activeRooms.sort(
+          (a, b) =>
+            new Date(b.lastMessageAt).getTime() -
+            new Date(a.lastMessageAt).getTime()
+        )[0];
+
         if (lastRoom) {
           setSelectedRoomId(lastRoom.roomId);
           setShowTutorLanding(false);
-          
+
           // If it's an educational criteria room, set the criteria
-          if (lastRoom.type === 'educational-criteria' && lastRoom.criteriaId) {
+          if (lastRoom.type === "educational-criteria" && lastRoom.criteriaId) {
             setSelectedCriteria(lastRoom.criteriaId);
           }
         }
       }
     } catch (error) {
-      console.error('Error loading last chat:', error);
+      console.error("Error loading last chat:", error);
     }
   };
 
@@ -174,21 +182,24 @@ export default function ChatAreaEnhanced({
   // Persist selected room ID in localStorage
   useEffect(() => {
     if (selectedRoomId) {
-      localStorage.setItem('selectedRoomId', selectedRoomId);
+      localStorage.setItem("selectedRoomId", selectedRoomId);
     }
   }, [selectedRoomId]);
 
   // Load selected room ID from localStorage on mount
   useEffect(() => {
-    const savedRoomId = localStorage.getItem('selectedRoomId');
+    const savedRoomId = localStorage.getItem("selectedRoomId");
     if (savedRoomId && rooms.length > 0) {
-      const roomExists = rooms.find(room => room.roomId === savedRoomId);
+      const roomExists = rooms.find((room) => room.roomId === savedRoomId);
       if (roomExists) {
         setSelectedRoomId(savedRoomId);
         setShowTutorLanding(false);
-        
+
         // If it's an educational criteria room, set the criteria
-        if (roomExists.type === 'educational-criteria' && roomExists.criteriaId) {
+        if (
+          roomExists.type === "educational-criteria" &&
+          roomExists.criteriaId
+        ) {
           setSelectedCriteria(roomExists.criteriaId);
         }
       }
@@ -198,7 +209,8 @@ export default function ChatAreaEnhanced({
   // Handle responsive sidebar behavior
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) { // lg breakpoint
+      if (window.innerWidth < 1024) {
+        // lg breakpoint
         setShowSidebar(false);
         setIsSidebarCollapsed(false);
       } else {
@@ -209,27 +221,32 @@ export default function ChatAreaEnhanced({
     // Set initial state
     handleResize();
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const fetchCriteriaList = async () => {
     try {
-      const response = await apiClient.get('/knowledge-base');
-      const criteria = response.data.criteria || response.data.knowledgeBases || response.data || [];
+      const response = await apiClient.get("/knowledge-base");
+      const criteria =
+        response.data.criteria ||
+        response.data.knowledgeBases ||
+        response.data ||
+        [];
       setCriteriaList(Array.isArray(criteria) ? criteria : []);
     } catch (error) {
-      console.error('Error fetching educational criteria:', error);
+      console.error("Error fetching educational criteria:", error);
       setCriteriaList([]);
     }
   };
 
   // Check usage limit
   const checkUsageLimit = () => {
-    if (!storeUser || !storeUser.planId || storeUser.usageCount === undefined) return false;
+    if (!storeUser || !storeUser.planId || storeUser.usageCount === undefined)
+      return false;
     return isUsageLimitReached({
       planId: storeUser.planId as string,
-      usageCount: storeUser.usageCount as number
+      usageCount: storeUser.usageCount as number,
     });
   };
 
@@ -246,12 +263,12 @@ export default function ChatAreaEnhanced({
       }
     }
 
-    const savedAutoPlay = localStorage.getItem('autoPlayVoice');
+    const savedAutoPlay = localStorage.getItem("autoPlayVoice");
     if (savedAutoPlay !== null) {
-      setAutoPlayVoice(savedAutoPlay === 'true');
+      setAutoPlayVoice(savedAutoPlay === "true");
     }
 
-    const savedVolume = localStorage.getItem('volume');
+    const savedVolume = localStorage.getItem("volume");
     if (savedVolume !== null) {
       setVolume(parseFloat(savedVolume));
     }
@@ -265,21 +282,21 @@ export default function ChatAreaEnhanced({
 
   const handleAutoPlayChange = (checked: boolean) => {
     setAutoPlayVoice(checked);
-    localStorage.setItem('autoPlayVoice', checked.toString());
+    localStorage.setItem("autoPlayVoice", checked.toString());
   };
 
   const handleVolumeChange = (value: number[]) => {
     const newVolume = value[0];
     setVolume(newVolume);
-    localStorage.setItem('volume', newVolume.toString());
+    localStorage.setItem("volume", newVolume.toString());
   };
 
   // Handle room selection
   const handleRoomSelect = async (roomId: string) => {
     if (roomId === selectedRoomId) return;
-    
+
     setSelectedRoomId(roomId);
-    
+
     // Clear legacy state when switching to new room
     setMessages([]);
     setCurrentSessionId(null);
@@ -287,49 +304,53 @@ export default function ChatAreaEnhanced({
     setSelectedCriteria("");
   };
 
-
   // Handle criteria selection - automatically creates room
   const handleCriteriaSelection = async (criteriaId: string) => {
     if (!criteriaId) return;
-    
+
     setIsLoadingCriteria(true);
     try {
       // Always create a new room for each criteria selection to ensure fresh start
-      const criteria = criteriaList.find(c => c.id === criteriaId);
-      const roomTitle = `${criteria?.name || 'Educational Criteria'} - ${new Date().toLocaleDateString()}`;
-      
+      const criteria = criteriaList.find((c) => c.id === criteriaId);
+      const roomTitle = `${
+        criteria?.name || "Educational Criteria"
+      } - ${new Date().toLocaleDateString()}`;
+
       const room = await createRoom({
         title: roomTitle,
         type: "educational-criteria",
-        criteriaId: criteriaId
+        criteriaId: criteriaId,
       });
-      
+
       if (room) {
         setSelectedRoomId(room.roomId);
         setSelectedCriteria(criteriaId);
         setShowCriteriaSelector(false);
         setShowTutorLanding(false);
-        
+
         // Create a session for this criteria
         try {
-          const response = await apiClient.post('/chat/session', {
-            criteriaId: criteriaId
+          const response = await apiClient.post("/chat/session", {
+            criteriaId: criteriaId,
           });
-          
+
           // Update the room with the session ID
           await chatApi.updateChatRoom(room.roomId, {
-            sessionId: response.data.session.sessionId
+            sessionId: response.data.session.sessionId,
           });
-          
+
           toast({
             title: "Educational Criteria Selected",
-            description: `Now using ${criteriaList.find(c => c.id === criteriaId)?.name || 'Unknown'} criteria for instruction-driven responses.`,
+            description: `Now using ${
+              criteriaList.find((c) => c.id === criteriaId)?.name || "Unknown"
+            } criteria for instruction-driven responses.`,
           });
         } catch (sessionError) {
           console.error("Session creation error:", sessionError);
           toast({
             title: "Warning",
-            description: "Educational criteria selected, but session creation failed. Some features may not work properly.",
+            description:
+              "Educational criteria selected, but session creation failed. Some features may not work properly.",
             variant: "destructive",
           });
         }
@@ -367,7 +388,8 @@ export default function ChatAreaEnhanced({
     if (checkUsageLimit()) {
       toast({
         title: "Usage Limit Reached",
-        description: "You've reached your question limit. Please upgrade your plan to continue.",
+        description:
+          "You've reached your question limit. Please upgrade your plan to continue.",
         variant: "destructive",
       });
       return;
@@ -377,7 +399,10 @@ export default function ChatAreaEnhanced({
 
     try {
       // Add user message to room
-      const userMessage = await chatApi.sendTextMessage(selectedRoomId, content);
+      const userMessage = await chatApi.sendTextMessage(
+        selectedRoomId,
+        content
+      );
       addMessage(userMessage);
 
       // Handle image upload with Wolfram
@@ -386,11 +411,11 @@ export default function ChatAreaEnhanced({
         setStreamingMessage("Processing image with Wolfram...");
         try {
           const wolframResult = await processImageWithWolfram(image);
-          
+
           const wolframMessage = await chatApi.sendWolframMessage(
             selectedRoomId,
-            wolframResult.interpretation 
-              ? `🔬 **Wolfram Cloud Analysis**\n\n${wolframResult.interpretation}` 
+            wolframResult.interpretation
+              ? `🔬 **Wolfram Cloud Analysis**\n\n${wolframResult.interpretation}`
               : "🔬 **Wolfram Cloud Analysis Complete**\n\nI've analyzed your image using Wolfram Language functions.",
             wolframResult.imageBase64 || "",
             wolframResult.interpretation
@@ -413,9 +438,8 @@ export default function ChatAreaEnhanced({
 
       // Process text message with educational criteria
       await processTextMessageWithRoom(content);
-
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -441,17 +465,35 @@ export default function ChatAreaEnhanced({
         if (wolframQuery) {
           try {
             const imageBase64 = await fetchWolframImage(wolframQuery);
-            
+
             // Create a more contextual message based on the request type
             let visualMessage = "";
-            if (message.toLowerCase().includes('explain') || message.toLowerCase().includes('help with')) {
-              visualMessage = `Here's a visual representation to help explain ${message.replace(/(?:explain|help with|illustrate|demonstrate|show how)\s+/i, "").replace(/\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i, "")}:`;
-            } else if (message.toLowerCase().includes('show me') || message.toLowerCase().includes('create') || message.toLowerCase().includes('generate')) {
+            if (
+              message.toLowerCase().includes("explain") ||
+              message.toLowerCase().includes("help with")
+            ) {
+              visualMessage = `Here's a visual representation to help explain ${message
+                .replace(
+                  /(?:explain|help with|illustrate|demonstrate|show how)\s+/i,
+                  ""
+                )
+                .replace(
+                  /\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i,
+                  ""
+                )}:`;
+            } else if (
+              message.toLowerCase().includes("show me") ||
+              message.toLowerCase().includes("create") ||
+              message.toLowerCase().includes("generate")
+            ) {
               visualMessage = `Here's the visualization you requested:`;
             } else {
-              visualMessage = `Here's the visualization of ${wolframQuery.replace(/^plot\s+/i, "")}:`;
+              visualMessage = `Here's the visualization of ${wolframQuery.replace(
+                /^plot\s+/i,
+                ""
+              )}:`;
             }
-            
+
             const wolframMessage = await chatApi.sendWolframMessage(
               selectedRoomId!,
               visualMessage,
@@ -468,25 +510,25 @@ export default function ChatAreaEnhanced({
 
       // For educational criteria rooms, we need to create a session first
       let sessionId = currentRoom?.sessionId;
-      
+
       // If no session exists, create one
-      if (!sessionId && currentRoom?.type === 'educational-criteria') {
-        const response = await apiClient.post('/chat/session', {
-          criteriaId: currentRoom.criteriaId
+      if (!sessionId && currentRoom?.type === "educational-criteria") {
+        const response = await apiClient.post("/chat/session", {
+          criteriaId: currentRoom.criteriaId,
         });
         sessionId = response.data.session.sessionId;
-        
+
         // Update the room with the session ID
         await chatApi.updateChatRoom(currentRoom.roomId, {
-          sessionId: sessionId
+          sessionId: sessionId,
         });
       }
 
       if (sessionId && selectedRoomId) {
-        const response = await apiClient.post('/chat/message', {
+        const response = await apiClient.post("/chat/message", {
           sessionId: sessionId,
           message,
-          isVoice: false
+          isVoice: false,
         });
 
         // Visual processing is handled client-side only
@@ -494,7 +536,7 @@ export default function ChatAreaEnhanced({
         const assistantMessage = await chatApi.sendTextMessage(
           selectedRoomId,
           response.data.response.content,
-          'assistant'
+          "assistant"
         );
         addMessage(assistantMessage);
       } else if (selectedRoomId) {
@@ -502,12 +544,12 @@ export default function ChatAreaEnhanced({
         const assistantMessage = await chatApi.sendTextMessage(
           selectedRoomId,
           "I'm here to help! Please select an educational criteria to get more specific assistance.",
-          'assistant'
+          "assistant"
         );
         addMessage(assistantMessage);
       }
     } catch (error) {
-      console.error('Criteria message error:', error);
+      console.error("Criteria message error:", error);
       toast({
         title: "Error",
         description: "Failed to process message with educational criteria",
@@ -532,11 +574,11 @@ export default function ChatAreaEnhanced({
 
   // Legacy send message function
   const handleLegacySendMessage = async (message: string, image?: File) => {
-  
     if (checkUsageLimit()) {
       toast({
         title: "Usage Limit Reached",
-        description: "You've reached your question limit. Please upgrade your plan to continue.",
+        description:
+          "You've reached your question limit. Please upgrade your plan to continue.",
         variant: "destructive",
       });
       return;
@@ -548,7 +590,9 @@ export default function ChatAreaEnhanced({
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: image ? (message.trim() || `Please analyze this image: ${image.name}`) : message.trim(),
+      content: image
+        ? message.trim() || `Please analyze this image: ${image.name}`
+        : message.trim(),
       createdAt: new Date().toISOString(),
       image: image ? URL.createObjectURL(image) : undefined,
     };
@@ -558,12 +602,12 @@ export default function ChatAreaEnhanced({
     if (image) {
       try {
         const wolframResult = await processImageWithWolfram(image);
-        
+
         const wolframMessage: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: wolframResult.interpretation 
-            ? `🔬 **Wolfram Cloud Analysis**\n\n${wolframResult.interpretation}` 
+          content: wolframResult.interpretation
+            ? `🔬 **Wolfram Cloud Analysis**\n\n${wolframResult.interpretation}`
             : "🔬 **Wolfram Cloud Analysis Complete**\n\nI've analyzed your image using Wolfram Language functions.",
           createdAt: new Date().toISOString(),
           wolframImage: wolframResult.imageBase64,
@@ -594,17 +638,35 @@ export default function ChatAreaEnhanced({
       if (wolframQuery) {
         try {
           const imageBase64 = await fetchWolframImage(wolframQuery);
-          
+
           // Create a more contextual message based on the request type
           let visualMessage = "";
-          if (message.toLowerCase().includes('explain') || message.toLowerCase().includes('help with')) {
-            visualMessage = `Here's a visual representation to help explain ${message.replace(/(?:explain|help with|illustrate|demonstrate|show how)\s+/i, "").replace(/\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i, "")}:`;
-          } else if (message.toLowerCase().includes('show me') || message.toLowerCase().includes('create') || message.toLowerCase().includes('generate')) {
+          if (
+            message.toLowerCase().includes("explain") ||
+            message.toLowerCase().includes("help with")
+          ) {
+            visualMessage = `Here's a visual representation to help explain ${message
+              .replace(
+                /(?:explain|help with|illustrate|demonstrate|show how)\s+/i,
+                ""
+              )
+              .replace(
+                /\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i,
+                ""
+              )}:`;
+          } else if (
+            message.toLowerCase().includes("show me") ||
+            message.toLowerCase().includes("create") ||
+            message.toLowerCase().includes("generate")
+          ) {
             visualMessage = `Here's the visualization you requested:`;
           } else {
-            visualMessage = `Here's the visualization of ${wolframQuery.replace(/^plot\s+/i, "")}:`;
+            visualMessage = `Here's the visualization of ${wolframQuery.replace(
+              /^plot\s+/i,
+              ""
+            )}:`;
           }
-          
+
           const wolframMessage: Message = {
             id: crypto.randomUUID(),
             role: "assistant",
@@ -635,13 +697,13 @@ export default function ChatAreaEnhanced({
       content: message,
       createdAt: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const response = await apiClient.post('/chat/message', {
+      const response = await apiClient.post("/chat/message", {
         sessionId: criteriaSessionId,
         message,
-        isVoice: false
+        isVoice: false,
       });
 
       // Visual processing is handled client-side only
@@ -652,9 +714,9 @@ export default function ChatAreaEnhanced({
         content: response.data.response.content,
         createdAt: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Criteria message error:', error);
+      console.error("Criteria message error:", error);
       toast({
         title: "Error",
         description: "Failed to send message to educational criteria",
@@ -670,33 +732,33 @@ export default function ChatAreaEnhanced({
   // Handle new chat
   const handleNewChat = async () => {
     if (isCreatingNewChat) return; // Prevent multiple clicks
-    
+
     try {
       setIsCreatingNewChat(true);
-      
+
       // Create a new general chat room
       const now = new Date();
-      const timestamp = now.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      const timestamp = now.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
-      
+
       const newRoom = await createRoom({
         title: `New Chat - ${timestamp}`,
-        type: 'general',
+        type: "general",
         ttsSettings: {
           selectedVoiceId: selectedVoiceId,
           autoPlayVoice: autoPlayVoice,
-          volume: volume
-        }
+          volume: volume,
+        },
       });
 
       if (newRoom) {
         // Set the new room as active
         setSelectedRoomId(newRoom.roomId);
-        
+
         // Clear all legacy state
         setCurrentSessionId(null);
         setMessages([]);
@@ -706,7 +768,7 @@ export default function ChatAreaEnhanced({
         setCriteriaSessionId("");
         setShowCriteriaSelector(false);
         setShowTutorLanding(false);
-        
+
         // Close sidebar on mobile after creating new chat
         if (window.innerWidth < 1024) {
           setShowSidebar(false);
@@ -719,7 +781,7 @@ export default function ChatAreaEnhanced({
         });
       }
     } catch (error) {
-      console.error('Error creating new chat:', error);
+      console.error("Error creating new chat:", error);
       toast({
         title: "Error",
         description: "Failed to create new chat room",
@@ -738,14 +800,14 @@ export default function ChatAreaEnhanced({
   // Handle auto-play toggle
   const handleToggleAutoPlay = () => {
     setAutoPlayVoice(!autoPlayVoice);
-    localStorage.setItem('autoPlayVoice', (!autoPlayVoice).toString());
+    localStorage.setItem("autoPlayVoice", (!autoPlayVoice).toString());
   };
 
   const handleScrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
         behavior: "smooth",
-        block: "end"
+        block: "end",
       });
     }
   };
@@ -753,22 +815,30 @@ export default function ChatAreaEnhanced({
   // Auto-scroll functionality with debouncing
   const handleScroll = () => {
     if (messagesContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const { scrollTop, scrollHeight, clientHeight } =
+        messagesContainerRef.current;
       const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
       setShouldAutoScroll(isAtBottom);
-      
+
       // Show/hide scroll to bottom button
       setShowScrollToBottom(!isAtBottom && scrollHeight > clientHeight);
-      
+
       // Clear existing timeout
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      
+
       // Check if user scrolled to top to load more messages (only after initial load)
-      if (scrollTop < 50 && hasMore && !loadingMore && roomMessages.length > 0 && hasInitiallyLoaded) {
+      if (
+        scrollTop < 50 &&
+        hasMore &&
+        !loadingMore &&
+        roomMessages.length > 0 &&
+        hasInitiallyLoaded
+      ) {
         // Debounce the load more call
         scrollTimeoutRef.current = setTimeout(() => {
+          setIsLoadingOlderMessages(true);
           loadMoreMessages();
         }, 300); // 300ms debounce
       }
@@ -776,17 +846,39 @@ export default function ChatAreaEnhanced({
   };
 
   useEffect(() => {
-    const messageCount = selectedRoomId && roomMessages.length > 0 ? roomMessages.length : messages.length;
-    if (shouldAutoScroll && (messageCount > 0 || isStreaming)) {
+    const messageCount =
+      selectedRoomId && roomMessages.length > 0
+        ? roomMessages.length
+        : messages.length;
+    // Don't auto-scroll if we're loading older messages
+    if (
+      shouldAutoScroll &&
+      (messageCount > 0 || isStreaming) &&
+      !isLoadingOlderMessages
+    ) {
       const timer = setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({
           behavior: "smooth",
-          block: "end"
+          block: "end",
         });
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [selectedRoomId, roomMessages.length, messages.length, isStreaming, shouldAutoScroll]);
+  }, [
+    selectedRoomId,
+    roomMessages.length,
+    messages.length,
+    isStreaming,
+    shouldAutoScroll,
+    isLoadingOlderMessages,
+  ]);
+
+  // Reset loading older messages state when loading completes
+  useEffect(() => {
+    if (!loadingMore && isLoadingOlderMessages) {
+      setIsLoadingOlderMessages(false);
+    }
+  }, [loadingMore, isLoadingOlderMessages]);
 
   // Cleanup scroll timeout on unmount
   useEffect(() => {
@@ -807,11 +899,14 @@ export default function ChatAreaEnhanced({
   }, [selectedRoomId, roomMessages.length, hasInitiallyLoaded]);
 
   useEffect(() => {
-    const messageCount = selectedRoomId && roomMessages.length > 0 ? roomMessages.length : messages.length;
+    const messageCount =
+      selectedRoomId && roomMessages.length > 0
+        ? roomMessages.length
+        : messages.length;
     if (messageCount > 0) {
       setShouldAutoScroll(true);
     }
-  }, [selectedRoomId, roomMessages.length, messages.length]);
+  }, [selectedRoomId]);
 
   // Auto-scroll to bottom when room changes
   useEffect(() => {
@@ -821,11 +916,11 @@ export default function ChatAreaEnhanced({
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({
           behavior: "smooth",
-          block: "end"
+          block: "end",
         });
       }, 200);
     }
-  }, [selectedRoomId, roomMessages.length]);
+  }, [selectedRoomId]);
 
   // Listen for sendToChat events from tools
   useEffect(() => {
@@ -878,23 +973,25 @@ export default function ChatAreaEnhanced({
     if (currentRoom) {
       return {
         title: currentRoom.title,
-        description: `Chat Room - ${currentRoom.type.replace('-', ' ')}`,
+        description: `Chat Room - ${currentRoom.type.replace("-", " ")}`,
         icon: <MessageSquare className="w-6 h-6 text-blue-600" />,
         gradient: "from-blue-500 to-purple-600",
         bgColor: "bg-gradient-to-r from-blue-50 to-purple-50",
-        borderColor: "border-blue-200"
+        borderColor: "border-blue-200",
       };
     }
 
     if (selectedCriteria) {
-      const criteria = criteriaList?.find(c => c.id === selectedCriteria);
+      const criteria = criteriaList?.find((c) => c.id === selectedCriteria);
       return {
-        title: `Educational Criteria: ${criteria?.name || 'Unknown'}`,
-        description: criteria?.description || 'Instruction-driven responses based on educational standards',
+        title: `Educational Criteria: ${criteria?.name || "Unknown"}`,
+        description:
+          criteria?.description ||
+          "Instruction-driven responses based on educational standards",
         icon: <Database className="w-6 h-6 text-blue-600" />,
         gradient: "from-blue-500 to-purple-600",
         bgColor: "bg-gradient-to-r from-blue-50 to-purple-50",
-        borderColor: "border-blue-200"
+        borderColor: "border-blue-200",
       };
     }
 
@@ -904,7 +1001,7 @@ export default function ChatAreaEnhanced({
       icon: <Lightbulb className="w-6 h-6 text-blue-600" />,
       gradient: "from-blue-500 to-purple-600",
       bgColor: "bg-gradient-to-r from-blue-50 to-purple-50",
-      borderColor: "border-blue-200"
+      borderColor: "border-blue-200",
     };
   };
 
@@ -926,7 +1023,9 @@ export default function ChatAreaEnhanced({
                   Educational Criteria Tutor
                   <Lightbulb className="w-4 h-4 text-blue-600" />
                 </h1>
-                <p className="text-sm text-gray-600">Select an educational tutor to begin learning</p>
+                <p className="text-sm text-gray-600">
+                  Select an educational tutor to begin learning
+                </p>
               </div>
             </div>
             <Button
@@ -947,26 +1046,31 @@ export default function ChatAreaEnhanced({
               <div className="p-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                 <GraduationCap className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">Choose Your Educational Tutor</h2>
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                Choose Your Educational Tutor
+              </h2>
               <p className="text-lg text-gray-600 mb-6">
-                Select from our available educational criteria tutors to get personalized learning assistance
+                Select from our available educational criteria tutors to get
+                personalized learning assistance
               </p>
             </div>
 
             {/* Available Tutors */}
             <div className="space-y-6">
-              {(!criteriaList || criteriaList.length === 0) ? (
+              {!criteriaList || criteriaList.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="p-4 bg-gray-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                     <Database className="w-10 h-10 text-gray-400" />
                   </div>
-                  <h4 className="text-lg font-semibold text-gray-700 mb-2">No Educational Tutors Available</h4>
+                  <h4 className="text-lg font-semibold text-gray-700 mb-2">
+                    No Educational Tutors Available
+                  </h4>
                   <p className="text-gray-500 mb-4">
-                    {storeUser?.role === 'admin' 
-                      ? 'Upload documents to create educational criteria' 
-                      : 'No educational criteria have been uploaded yet. Contact an administrator to add criteria.'}
+                    {storeUser?.role === "admin"
+                      ? "Upload documents to create educational criteria"
+                      : "No educational criteria have been uploaded yet. Contact an administrator to add criteria."}
                   </p>
-                  {storeUser?.role === 'admin' && (
+                  {storeUser?.role === "admin" && (
                     <Button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl px-6 py-2">
                       <BookOpen className="w-4 h-4 mr-2" />
                       Upload Documents
@@ -975,52 +1079,57 @@ export default function ChatAreaEnhanced({
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {criteriaList && criteriaList.map((criteria) => (
-                    <div
-                      key={criteria.id}
-                      className="p-6 rounded-2xl border-2 border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
-                      onClick={() => handleTutorSelection(criteria.id)}
-                    >
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
-                          <Database className="w-8 h-8" />
+                  {criteriaList &&
+                    criteriaList.map((criteria) => (
+                      <div
+                        key={criteria.id}
+                        className="p-6 rounded-2xl border-2 border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                        onClick={() => handleTutorSelection(criteria.id)}
+                      >
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
+                            <Database className="w-8 h-8" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                              {criteria.name}
+                              <Sparkles className="w-5 h-5 text-blue-600" />
+                            </h4>
+                            <p className="text-gray-600 font-medium mb-2">
+                              {criteria.description}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                            {criteria.name}
-                            <Sparkles className="w-5 h-5 text-blue-600" />
-                          </h4>
-                          <p className="text-gray-600 font-medium mb-2">{criteria.description}</p>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-4">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                              {criteria.educationalBoard}
+                            </span>
+                            <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
+                              {criteria.subject}
+                            </span>
+                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
+                              {criteria.level}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-sm text-gray-500">
+                            <span>{criteria.totalChunks} chunks</span>
+                            <span>
+                              {criteria.totalTokens.toLocaleString()} tokens
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-center">
+                          <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl">
+                            <GraduationCap className="w-4 h-4 mr-2" />
+                            Start Learning
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-4">
-                          <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
-                            {criteria.educationalBoard}
-                          </span>
-                          <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
-                            {criteria.subject}
-                          </span>
-                          <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
-                            {criteria.level}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between text-sm text-gray-500">
-                          <span>{criteria.totalChunks} chunks</span>
-                          <span>{criteria.totalTokens.toLocaleString()} tokens</span>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4 flex items-center justify-center">
-                        <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl">
-                          <GraduationCap className="w-4 h-4 mr-2" />
-                          Start Learning
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
@@ -1031,10 +1140,10 @@ export default function ChatAreaEnhanced({
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-16">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-white">
       {/* Mobile Overlay */}
       {showSidebar && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setShowSidebar(false)}
         />
@@ -1060,86 +1169,53 @@ export default function ChatAreaEnhanced({
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col h-full">
-        {/* Header - Fixed at top */}
-        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            {/* Left: Room Info and Mobile Menu */}
-            <div className="flex items-center space-x-3">
-              {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="lg:hidden"
-              >
-                <Menu className="w-4 h-4" />
-              </Button>
-              
-              {/* Room Info */}
-              <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg bg-gradient-to-r ${tutorInfo.gradient} shadow-sm`}>
-                  {tutorInfo.icon}
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    {tutorInfo.title}
-                    <Lightbulb className="w-4 h-4 text-blue-600" />
-                  </h1>
-                  <p className="text-sm text-gray-600">{tutorInfo.description}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Voice Controls and Credits */}
-            <div className="flex items-center space-x-4">
-              {/* Voice Controls - Hidden on mobile */}
-              <div className="hidden md:flex items-center space-x-3 bg-gray-50 rounded-lg px-3 py-2">
-                <div className="flex items-center space-x-2">
-                  <Volume2 className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Voice:</span>
-                  <TutorSelector
-                    selectedVoiceId={selectedVoiceId}
-                    onVoiceChange={handleVoiceChange}
-                  />
-                </div>
-                <div className="w-px h-6 bg-gray-300"></div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="auto-play-voice"
-                    checked={autoPlayVoice}
-                    onCheckedChange={handleAutoPlayChange}
-                    className="w-4 h-4"
-                  />
-                  <label htmlFor="auto-play-voice" className="text-sm font-medium text-gray-700 cursor-pointer">
-                    Auto-play
-                  </label>
-                </div>
-              </div>
-
-              {/* Credits Badge */}
-              <div className="flex items-center gap-1 px-2 py-1 bg-amber-100 border border-amber-200 rounded-full text-xs font-medium text-amber-800">
-                <Crown className="w-3 h-3" />
-                <span>{storeUser && storeUser.planId ? getRemainingCredits({
+        {/* Enhanced Header */}
+        <TutorHeader
+          selectedVoiceId={selectedVoiceId}
+          onVoiceChange={setSelectedVoiceId}
+          autoPlayVoice={autoPlayVoice}
+          onToggleAutoPlay={handleToggleAutoPlay}
+          volume={volume}
+          onVolumeChange={setVolume}
+          userCredits={
+            storeUser && storeUser.planId
+              ? getRemainingCredits({
                   planId: storeUser.planId as string,
-                  usageCount: storeUser.usageCount || 0
-                }) : 0}</span>
-              </div>
-            </div>
-          </div>
+                  usageCount: storeUser.usageCount || 0,
+                })
+              : 0
+          }
+        />
+
+        {/* Mobile Menu Button - Only visible on mobile */}
+        <div className="lg:hidden px-6 py-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="lg:hidden"
+          >
+            <Menu className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Messages Container - Scrollable */}
         <div
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto px-4 py-2 bg-gradient-to-b from-white to-gray-50"
+          className="flex-1 overflow-y-auto px-6 py-4 bg-gradient-to-r from-green-50/30 via-slate-50/20 to-white/50"
           onScroll={handleScroll}
         >
           {/* Loading more messages indicator */}
           {loadingMore && (
-            <div ref={messagesTopRef} className="flex items-center justify-center py-4">
+            <div
+              ref={messagesTopRef}
+              className="flex items-center justify-center py-4"
+            >
               <div className="flex items-center space-x-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-sm text-gray-600">Loading more messages...</span>
+                <span className="text-sm text-gray-600">
+                  Loading more messages...
+                </span>
               </div>
             </div>
           )}
@@ -1161,7 +1237,7 @@ export default function ChatAreaEnhanced({
           )}
 
           {/* Messages */}
-          <div className="max-w-4xl lg:max-w-5xl mx-auto space-y-3">
+          <div className="max-w-5xl mx-auto space-y-3">
             {currentMessages.map((message, index) => (
               <MessageBubble
                 key={`${index}-${selectedVoiceId}`}
@@ -1172,7 +1248,9 @@ export default function ChatAreaEnhanced({
                 wolframInterpretation={message.wolframInterpretation}
                 wolframGenerated={message.wolframGenerated}
                 timestamp={message.createdAt}
-                isStreaming={isStreaming && index === currentMessages.length - 1}
+                isStreaming={
+                  isStreaming && index === currentMessages.length - 1
+                }
                 selectedVoiceId={selectedVoiceId}
                 autoPlayVoice={autoPlayVoice}
                 volume={volume}
@@ -1235,4 +1313,3 @@ export default function ChatAreaEnhanced({
     </div>
   );
 }
-

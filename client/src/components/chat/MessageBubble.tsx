@@ -2,27 +2,23 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
-import { 
-  Pause, 
-  Play, 
-  Copy
-} from 'lucide-react';
+import { Pause, Play, Copy } from "lucide-react";
 
 // Utility function to split text into sentences for highlighting
 const splitIntoSentences = (text: string): string[] => {
   // Split by sentence endings, but preserve LaTeX expressions
   const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z])/);
-  return sentences.filter(sentence => sentence.trim().length > 0);
+  return sentences.filter((sentence) => sentence.trim().length > 0);
 };
 
 // Calculate approximate timing for each sentence (words per minute = 150)
 const calculateSentenceTiming = (sentences: string[]): number[] => {
   const wordsPerMinute = 150;
   const wordsPerSecond = wordsPerMinute / 60;
-  
-  return sentences.map(sentence => {
+
+  return sentences.map((sentence) => {
     const wordCount = sentence.trim().split(/\s+/).length;
-    return Math.max(wordCount / wordsPerSecond * 1000, 1000); // Minimum 1 second per sentence
+    return Math.max((wordCount / wordsPerSecond) * 1000, 1000); // Minimum 1 second per sentence
   });
 };
 
@@ -40,37 +36,37 @@ interface MessageBubbleProps {
   volume?: number;
 }
 
-export default function MessageBubble({ 
-  role, 
-  content, 
-  image, 
+export default function MessageBubble({
+  role,
+  content,
+  image,
   wolframImage,
   wolframInterpretation,
   wolframGenerated,
-  timestamp, 
+  timestamp,
   isStreaming,
   selectedVoiceId,
   autoPlayVoice = false,
-  volume = 0.7
+  volume = 0.7,
 }: MessageBubbleProps) {
-  
   // MathJax configuration
   const mathJaxConfig = {
     tex: {
-      inlineMath: [['\\(', '\\)']],
-      displayMath: [['\\[', '\\]']],
+      inlineMath: [["\\(", "\\)"]],
+      displayMath: [["\\[", "\\]"]],
       processEscapes: true,
-      processEnvironments: true
+      processEnvironments: true,
     },
     options: {
-      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
-    }
+      skipHtmlTags: ["script", "noscript", "style", "textarea", "pre"],
+    },
   };
-  
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentHighlightedSentence, setCurrentHighlightedSentence] = useState<number>(-1);
+  const [currentHighlightedSentence, setCurrentHighlightedSentence] =
+    useState<number>(-1);
   const [sentences, setSentences] = useState<string[]>([]);
   const [sentenceTimings, setSentenceTimings] = useState<number[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -105,7 +101,14 @@ export default function MessageBubble({
 
   // Auto-play functionality
   useEffect(() => {
-    if (autoPlayVoice && role === "assistant" && !isStreaming && content && !isPlaying && !audioUrl) {
+    if (
+      autoPlayVoice &&
+      role === "assistant" &&
+      !isStreaming &&
+      content &&
+      !isPlaying &&
+      !audioUrl
+    ) {
       // Small delay to ensure message is fully rendered
       const timer = setTimeout(() => {
         handlePlayVoice();
@@ -124,23 +127,29 @@ export default function MessageBubble({
   // Start sentence highlighting sequence
   const startSentenceHighlighting = () => {
     if (sentences.length === 0) return;
-    
+
     setCurrentHighlightedSentence(0);
     let currentIndex = 0;
-    
+
     const highlightNextSentence = () => {
       if (currentIndex < sentences.length - 1) {
         currentIndex++;
         setCurrentHighlightedSentence(currentIndex);
-        highlightTimeoutRef.current = setTimeout(highlightNextSentence, sentenceTimings[currentIndex]);
+        highlightTimeoutRef.current = setTimeout(
+          highlightNextSentence,
+          sentenceTimings[currentIndex]
+        );
       } else {
         // All sentences highlighted, clear after a short delay
         setTimeout(() => setCurrentHighlightedSentence(-1), 1000);
       }
     };
-    
+
     // Start highlighting after first sentence timing
-    highlightTimeoutRef.current = setTimeout(highlightNextSentence, sentenceTimings[0]);
+    highlightTimeoutRef.current = setTimeout(
+      highlightNextSentence,
+      sentenceTimings[0]
+    );
   };
 
   // Stop sentence highlighting
@@ -168,25 +177,25 @@ export default function MessageBubble({
       return sentences.map((sentence, sentenceIndex) => {
         const isHighlighted = sentenceIndex === currentHighlightedSentence;
         const isPastHighlighted = sentenceIndex < currentHighlightedSentence;
-        
+
         return (
           <span
             key={sentenceIndex}
             className={`transition-all duration-300 ${
-              isHighlighted 
-                ? 'bg-yellow-200 text-gray-900 px-1 py-0.5 rounded-md shadow-sm' 
-                : isPastHighlighted 
-                  ? 'text-gray-600' 
-                  : 'text-gray-800'
+              isHighlighted
+                ? "bg-yellow-200 text-gray-900 px-1 py-0.5 rounded-md shadow-sm"
+                : isPastHighlighted
+                ? "text-gray-600"
+                : "text-gray-800"
             }`}
           >
             {renderLaTeXContent(sentence)}
-            {sentenceIndex < sentences.length - 1 && ' '}
+            {sentenceIndex < sentences.length - 1 && " "}
           </span>
         );
       });
     }
-    
+
     // Fallback to regular LaTeX rendering
     return renderLaTeXContent(text);
   };
@@ -212,7 +221,7 @@ export default function MessageBubble({
     try {
       setIsPlaying(true);
       setIsLoading(true);
-      
+
       // Check cache first when user clicks play
       const cachedAudio = sessionStorage.getItem(cacheKey);
       if (cachedAudio) {
@@ -232,13 +241,13 @@ export default function MessageBubble({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem('auth_token')}`,
+          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           text: content,
           voice: selectedVoiceId, // This should now be "alloy", "echo", etc.
           model: "tts-1", // OpenAI TTS model
-          format: "mp3" // Output format
+          format: "mp3", // Output format
         }),
       });
 
@@ -248,11 +257,11 @@ export default function MessageBubble({
 
       const audioBlob = await response.blob();
       const url = URL.createObjectURL(audioBlob);
-      
+
       // Cache the audio URL for future use
       sessionStorage.setItem(cacheKey, url);
       setAudioUrl(url);
-      
+
       if (audioRef.current) {
         audioRef.current.src = url;
         audioRef.current.play();
@@ -298,27 +307,30 @@ export default function MessageBubble({
       <MathJaxContext config={mathJaxConfig}>
         <div className="flex gap-3 py-3 justify-end">
           <div className="flex-1 max-w-3xl">
-            <div className="bg-blue-50 border-l-4 border-blue-400 rounded-xl p-4 shadow-sm relative">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/60 rounded-2xl p-4 shadow-lg relative backdrop-blur-sm">
               {image && (
-                <div className="mb-3">
-                  <img 
-                    src={image} 
-                    alt="Uploaded image" 
-                    className="max-w-full rounded-lg border border-blue-200"
+                <div className="mb-4">
+                  <img
+                    src={image}
+                    alt="Uploaded image"
+                    className="max-w-full rounded-xl border border-blue-200/60 shadow-sm"
                   />
                 </div>
               )}
-              <div className="text-sm leading-relaxed text-gray-800">
+              <div className="text-sm leading-relaxed text-slate-800 font-medium">
                 {renderContent(content)}
               </div>
               {timestamp && (
-                <div className="absolute top-2 right-3 text-xs text-gray-500 font-medium">
-                  {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="absolute top-3 right-4 text-xs text-slate-500 font-semibold bg-white/80 px-2 py-1 rounded-full">
+                  {new Date(timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
               )}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg flex-shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-xl flex-shrink-0">
             You
           </div>
         </div>
@@ -330,75 +342,84 @@ export default function MessageBubble({
     return (
       <MathJaxContext config={mathJaxConfig}>
         <div className="flex gap-3 py-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg flex-shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-sm font-bold shadow-xl flex-shrink-0">
             AI
           </div>
-          
-          <div className="flex-1 max-w-3xl space-y-2">
-            <div className="bg-green-50 border-l-4 border-green-400 rounded-xl p-4 shadow-sm relative">
+
+          <div className="flex-1 max-w-3xl space-y-3">
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200/60 rounded-2xl p-4 shadow-lg relative backdrop-blur-sm">
               {image && (
-                <div className="mb-3">
-                  <img 
-                    src={image} 
-                    alt="User uploaded image" 
-                    className="max-w-full rounded-lg border border-green-200"
+                <div className="mb-4">
+                  <img
+                    src={image}
+                    alt="User uploaded image"
+                    className="max-w-full rounded-xl border border-emerald-200/60 shadow-sm"
                   />
                 </div>
               )}
-              
+
               {wolframImage && (
-                <div className="mb-3">
+                <div className="mb-4">
                   <div className="relative">
-                    <img 
-                      src={wolframImage} 
-                      alt="Wolfram generated visualization" 
-                      className="max-w-full rounded-lg border border-blue-200"
+                    <img
+                      src={wolframImage}
+                      alt="Wolfram generated visualization"
+                      className="max-w-full rounded-xl border border-blue-200/60 shadow-sm"
                     />
                     {wolframGenerated && (
-                      <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                      <div className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs px-3 py-1 rounded-full font-semibold shadow-lg">
                         Generated by Wolfram
                       </div>
                     )}
                   </div>
                   {wolframInterpretation && (
-                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800 font-medium mb-1">Wolfram Analysis:</p>
-                      <p className="text-sm text-blue-700">{wolframInterpretation}</p>
+                    <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-xl shadow-sm">
+                      <p className="text-sm text-blue-800 font-semibold mb-2">
+                        Wolfram Analysis:
+                      </p>
+                      <p className="text-sm text-blue-700 leading-relaxed">
+                        {wolframInterpretation}
+                      </p>
                     </div>
                   )}
                 </div>
               )}
-              
+
               <div className="prose prose-sm max-w-none">
                 {isStreaming ? (
-                  <div className="text-gray-800 text-sm leading-relaxed">
+                  <div className="text-slate-800 text-sm leading-relaxed font-medium">
                     {content}
-                    <span className="animate-pulse text-green-600">▊</span>
+                    <span className="animate-pulse text-emerald-600 font-bold">
+                      ▊
+                    </span>
                   </div>
                 ) : (
                   renderContent(content)
                 )}
               </div>
-              
+
               {timestamp && (
-                <div className="absolute top-2 right-3 text-xs text-gray-500 font-medium">
-                  {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="absolute top-3 right-4 text-xs text-slate-500 font-semibold bg-white/80 px-2 py-1 rounded-full">
+                  {new Date(timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
               )}
             </div>
-            
+
             {/* Action buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePlayVoice}
                 disabled={isLoading || isStreaming}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-white/80 hover:bg-emerald-50 border-emerald-200 hover:border-emerald-300 text-emerald-700 hover:text-emerald-800 shadow-sm hover:shadow-md transition-all duration-200"
               >
                 {isLoading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                     Loading...
                   </>
                 ) : isPlaying ? (
@@ -418,19 +439,19 @@ export default function MessageBubble({
                   </>
                 )}
               </Button>
-              
+
               {/* Copy button */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleCopyToClipboard}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all duration-200"
               >
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
           </div>
-          
+
           <audio
             ref={audioRef}
             onEnded={handleAudioEnded}
