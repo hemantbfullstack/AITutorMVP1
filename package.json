@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "dotenv -e .env.development -- cross-env NODE_ENV=development nodemon server/index.ts",
+    "devUbuntu": "NODE_ENV=development dotenv -e .env.development -- nodemon server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs",
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
@@ -134,6 +135,7 @@
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "copyfiles": "^2.4.1",
+    "dotenv-cli": "^10.0.0",
     "esbuild": "^0.25.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
