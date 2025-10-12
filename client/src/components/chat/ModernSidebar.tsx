@@ -63,6 +63,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Hardcoded criteria mapping
+const CRITERIA_MAPPING: { [key: string]: string } = {
+  "math-aa-sl": "AA SL",
+  "math-aa-hl": "AA HL", 
+  "math-ai-sl": "AI SL",
+  "math-ai-hl": "AI HL",
+};
+
+// Function to get criteria level from criteriaId
+const getCriteriaLevel = (criteriaId?: string): string => {
+  if (!criteriaId) return "General";
+  return CRITERIA_MAPPING[criteriaId] || "Educational";
+};
+
 interface ModernSidebarProps {
   selectedRoomId: string | null;
   onRoomSelect: (roomId: string) => void;
@@ -92,7 +106,7 @@ export default function ModernSidebar({
   const [filterType, setFilterType] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("chat-rooms");
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
-    "chat-rooms": true,
+    "chat-rooms": false,
     "available-rooms": false,
     tools: false,
     settings: false,
@@ -450,11 +464,11 @@ export default function ModernSidebar({
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center">
+                              <div className="flex items-start space-x-2 mb-2">
+                                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center flex-shrink-0 mt-0.5">
                                   {getRoomTypeIcon(room.type)}
                                 </div>
-                                <h3 className="text-sm font-semibold text-slate-900 truncate">
+                                <h3 className="text-sm font-semibold text-slate-900 break-words leading-tight">
                                   {room.title}
                                 </h3>
                               </div>
@@ -465,7 +479,10 @@ export default function ModernSidebar({
                                     room.type
                                   )}`}
                                 >
-                                  {room.type.replace("-", " ")}
+                                  {room.type === 'educational-criteria' 
+                                    ? getCriteriaLevel(room.criteriaId)
+                                    : room.type.replace("-", " ")
+                                  }
                                 </Badge>
                                 <span className="text-xs text-slate-500 font-medium">
                                   {room.messageCount} messages

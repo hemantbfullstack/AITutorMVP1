@@ -7,6 +7,7 @@ import { generateEmbedding, generateResponse } from '../config/openai.js';
 import { getIndex } from '../config/pinecone.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkUsage } from '../checkUsageMiddleware.js';
+import { getHardcodedCriteria, isHardcodedCriteria } from '../utils/hardcodedCriteria.js';
 
 const router = express.Router();
 
@@ -20,8 +21,14 @@ router.post('/session', authenticateToken, async (req: any, res: any) => {
       return res.status(400).json({ error: 'Educational criteria ID is required' });
     }
 
-    // Verify educational criteria exists
-    const criteria = await EducationalCriteria.findById(criteriaId);
+    // Check if it's a hardcoded criteria or database criteria
+    let criteria;
+    if (isHardcodedCriteria(criteriaId)) {
+      criteria = getHardcodedCriteria(criteriaId);
+    } else {
+      criteria = await EducationalCriteria.findById(criteriaId);
+    }
+    
     if (!criteria) {
       return res.status(404).json({ error: 'Educational criteria not found' });
     }
@@ -90,12 +97,26 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
     }
 
     // Get chat session
-    const chatSession = await ChatSession.findOne({ sessionId }).populate(
-      "criteriaId"
-    );
+    const chatSession = await ChatSession.findOne({ sessionId });
     if (!chatSession) {
       return res.status(404).json({ error: "Chat session not found" });
     }
+
+    // Get criteria information (hardcoded or from database)
+    let criteria;
+    if (isHardcodedCriteria(chatSession.criteriaId)) {
+      criteria = getHardcodedCriteria(chatSession.criteriaId);
+      console.log(`🎯 Using hardcoded criteria: ${criteria.name} (${criteria.level})`);
+    } else {
+      criteria = await EducationalCriteria.findById(chatSession.criteriaId);
+      console.log(`🎯 Using database criteria: ${criteria?.name} (${criteria?.level})`);
+    }
+    
+    if (!criteria) {
+      return res.status(404).json({ error: "Educational criteria not found" });
+    }
+    
+    console.log(`📚 Teaching level: ${criteria.level}, Subject: ${criteria.subject}`);
 
 
     const startTime = Date.now();
@@ -115,7 +136,7 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
           topK: 5, // Get fewer, more focused instructional criteria
           includeMetadata: true,
           filter: {
-            criteriaId: chatSession.criteriaId._id.toString(),
+            criteriaId: criteria.id,
           },
         });
 
@@ -152,7 +173,7 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
       const messages = [
         {
           role: "system",
-          content: `You are a friendly AI tutor specialized in ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} education. 
+          content: `You are a friendly AI tutor specialized in ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} education. 
 
 You can handle both casual conversation and educational questions:
 
@@ -160,16 +181,32 @@ FOR CASUAL CONVERSATION (greetings, how are you, etc.):
 - Be warm, friendly, and conversational
 - Keep responses brief and natural
 - Mention that you're ready to help with educational questions
-- Examples: "Hi! I'm doing great, thank you! I'm here to help you with ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} questions. What would you like to learn about?"
+- Examples: "Hi! I'm doing great, thank you! I'm here to help you with ${criteria.subject} ${criteria.level} questions. What would you like to learn about?"
 
 FOR EDUCATIONAL QUESTIONS:
-- Use your knowledge of ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} curriculum
+- You are ONLY authorized to teach ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} level content
+- If a question is beyond ${criteria.level} level, politely decline and suggest the appropriate level
+- Use your knowledge of ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} curriculum ONLY
 - Follow the instructional guidelines and teaching approaches from the educational criteria
 - Provide clear, structured explanations (steps, bullet points, equations)
 - Keep answers educational and aligned with the curriculum standards
 
+LEVEL RESTRICTION POLICY:
+- For ${criteria.level}: Only answer questions appropriate for this level
+- If asked about higher level content, say: "This question is beyond ${criteria.level} level. For this topic, you would need ${criteria.level === 'AA SL' ? 'AA HL' : criteria.level === 'AI SL' ? 'AI HL' : 'a higher level'} instruction."
+
+SPECIFIC LEVEL RESTRICTIONS:
+${criteria.level === 'AA SL' ? 
+  '- AA SL: Focus on basic calculus, algebra, functions, trigonometry, statistics, and probability' :
+  criteria.level === 'AA HL' ?
+  '- AA HL: Can handle advanced calculus, complex analysis, advanced algebra, and proof techniques' :
+  criteria.level === 'AI SL' ?
+  '- AI SL: Focus on applied mathematics, statistics, modeling, and real-world applications' :
+  '- AI HL: Can handle advanced applied mathematics, complex modeling, and advanced statistics'
+}
+
 Educational Criteria Guidelines:
-${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} teaching approaches."}`,
+${instructionalContext || "Use standard ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} teaching approaches."}`,
         },
         { role: "user", content: message },
       ];
@@ -179,19 +216,35 @@ ${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoar
       const messages = [
         {
           role: "system",
-          content: `You are an AI tutor specialized in ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} education.
+          content: `You are an AI tutor specialized in ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} education.
 
 CRITICAL INSTRUCTIONS:
-- Use your knowledge of ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} curriculum
+- You are ONLY authorized to teach ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} level content
+- If a question is beyond ${criteria.level} level (e.g., HL content when teaching SL, or advanced topics not covered in ${criteria.level}), politely decline and suggest the appropriate level
+- Use your knowledge of ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} curriculum ONLY
 - Follow the instructional guidelines and teaching approaches provided below
 - Provide clear, structured explanations (steps, bullet points, equations)
 - Keep answers educational and aligned with the curriculum standards
-- Use appropriate terminology and concepts for ${chatSession.criteriaId.level} level
-- Follow ${chatSession.criteriaId.educationalBoard} assessment criteria and command terms
+- Use appropriate terminology and concepts for ${criteria.level} level
+- Follow ${criteria.educationalBoard} assessment criteria and command terms
 
+LEVEL RESTRICTION POLICY:
+- For ${criteria.level}: Only answer questions appropriate for this level
+- If asked about higher level content, say: "This question is beyond ${criteria.level} level. For this topic, you would need ${criteria.level === 'AA SL' ? 'AA HL' : criteria.level === 'AI SL' ? 'AI HL' : 'a higher level'} instruction."
+- Always stay within the scope of ${criteria.level} curriculum
+
+SPECIFIC LEVEL RESTRICTIONS:
+${criteria.level === 'AA SL' ? 
+  '- AA SL: Focus on basic calculus, algebra, functions, trigonometry, statistics, and probability' :
+  criteria.level === 'AA HL' ?
+  '- AA HL: Can handle advanced calculus, complex analysis, advanced algebra, and proof techniques' :
+  criteria.level === 'AI SL' ?
+  '- AI SL: Focus on applied mathematics, statistics, modeling, and real-world applications' :
+  '- AI HL: Can handle advanced applied mathematics, complex modeling, and advanced statistics'
+}
 
 Educational Criteria Guidelines:
-${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoard} ${chatSession.criteriaId.subject} ${chatSession.criteriaId.level} teaching approaches and curriculum standards."}`,
+${instructionalContext || "Use standard ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} teaching approaches and curriculum standards."}`,
         },
         { role: "user", content: message },
       ];
@@ -207,7 +260,7 @@ ${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoar
       content: message,
       isVoice,
       metadata: {
-        criteria: chatSession.criteriaId.name,
+        criteria: criteria.name,
         responseTime: 0,
       },
     });
@@ -216,7 +269,7 @@ ${instructionalContext || "Use standard ${chatSession.criteriaId.educationalBoar
       role: "assistant",
       content: response,
       metadata: {
-        criteria: chatSession.criteriaId.name,
+        criteria: criteria.name,
         tokensUsed: response.length,
         responseTime,
         criteriaUsed: hasRelevantCriteria,
@@ -271,11 +324,11 @@ router.get('/session/:sessionId', authenticateToken, async (req: any, res: any) 
       session: {
         sessionId: chatSession.sessionId,
         roomId: chatSession.roomId,
-        criteriaId: chatSession.criteriaId._id,
-        criteriaName: chatSession.criteriaId.name,
-        educationalBoard: chatSession.criteriaId.educationalBoard,
-        subject: chatSession.criteriaId.subject,
-        level: chatSession.criteriaId.level,
+        criteriaId: criteria.id,
+        criteriaName: criteria.name,
+        educationalBoard: criteria.educationalBoard,
+        subject: criteria.subject,
+        level: criteria.level,
         title: chatSession.title,
         messages: chatSession.messages,
         totalTokensUsed: chatSession.totalTokensUsed,
@@ -311,11 +364,11 @@ router.get('/room/:roomId', authenticateToken, async (req: any, res: any) => {
       session: {
         sessionId: chatSession.sessionId,
         roomId: chatSession.roomId,
-        criteriaId: chatSession.criteriaId._id,
-        criteriaName: chatSession.criteriaId.name,
-        educationalBoard: chatSession.criteriaId.educationalBoard,
-        subject: chatSession.criteriaId.subject,
-        level: chatSession.criteriaId.level,
+        criteriaId: criteria.id,
+        criteriaName: criteria.name,
+        educationalBoard: criteria.educationalBoard,
+        subject: criteria.subject,
+        level: criteria.level,
         title: chatSession.title,
         messages: chatSession.messages,
         totalTokensUsed: chatSession.totalTokensUsed,

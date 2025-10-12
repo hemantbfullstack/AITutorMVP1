@@ -11,6 +11,45 @@ const splitIntoSentences = (text: string): string[] => {
   return sentences.filter((sentence) => sentence.trim().length > 0);
 };
 
+// Utility function to format date as "time ago"
+const formatTimeAgo = (timestamp: string): string => {
+  const now = new Date();
+  const messageTime = new Date(timestamp);
+  const diffInSeconds = Math.floor((now.getTime() - messageTime.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'just now';
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) {
+    return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+  }
+
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) {
+    return `${diffInWeeks} week${diffInWeeks === 1 ? '' : 's'} ago`;
+  }
+
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) {
+    return `${diffInMonths} month${diffInMonths === 1 ? '' : 's'} ago`;
+  }
+
+  const diffInYears = Math.floor(diffInDays / 365);
+  return `${diffInYears} year${diffInYears === 1 ? '' : 's'} ago`;
+};
+
 // Calculate approximate timing for each sentence (words per minute = 150)
 const calculateSentenceTiming = (sentences: string[]): number[] => {
   const wordsPerMinute = 150;
@@ -317,17 +356,14 @@ export default function MessageBubble({
                   />
                 </div>
               )}
-              <div className="text-sm leading-relaxed text-slate-800 font-medium">
-                {renderContent(content)}
-              </div>
-              {timestamp && (
-                <div className="absolute top-3 right-4 text-xs text-slate-500 font-semibold bg-white/80 px-2 py-1 rounded-full">
-                  {new Date(timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              )}
+               <div className="text-sm leading-relaxed text-slate-800 font-medium">
+                 {renderContent(content)}
+               </div>
+               {timestamp && (
+                 <div className="absolute top-3 right-4 text-xs text-slate-500 font-semibold bg-white/80 px-2 py-1 rounded-full">
+                   {formatTimeAgo(timestamp)}
+                 </div>
+               )}
             </div>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-xl flex-shrink-0">
@@ -398,14 +434,11 @@ export default function MessageBubble({
                 )}
               </div>
 
-              {timestamp && (
-                <div className="absolute top-3 right-4 text-xs text-slate-500 font-semibold bg-white/80 px-2 py-1 rounded-full">
-                  {new Date(timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              )}
+               {timestamp && (
+                 <div className="absolute top-3 right-4 text-xs text-slate-500 font-semibold bg-white/80 px-2 py-1 rounded-full">
+                   {formatTimeAgo(timestamp)}
+                 </div>
+               )}
             </div>
 
             {/* Action buttons */}

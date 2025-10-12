@@ -10,7 +10,8 @@ if (process.env.NODE_ENV === 'development') {
 
 mongoose
   .connect(MongoURI, {
-    autoIndex: true,    
+    autoIndex: true, 
+       serverSelectionTimeoutMS: 30000
   })
   .catch((error) => {
     if (process.env.NODE_ENV === 'development') {

@@ -27,8 +27,7 @@ const ChatRoomSchema = new mongoose.Schema({
   },
   // For educational criteria chats
   criteriaId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'EducationalCriteria',
+    type: String,
     required: function() {
       return this.type === 'educational-criteria';
     }

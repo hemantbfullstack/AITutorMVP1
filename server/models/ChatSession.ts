@@ -44,8 +44,7 @@ const ChatSessionSchema = new mongoose.Schema({
     index: true
   },
   criteriaId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'EducationalCriteria',
+    type: String,
     required: true
   },
   title: {

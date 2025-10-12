@@ -29,6 +29,7 @@ import {
   Menu,
   X,
   ArrowDown,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isUsageLimitReached, getRemainingCredits } from "@/constants/plans";
@@ -94,7 +95,14 @@ export default function ChatAreaEnhanced({
   const [criteriaSessionId, setCriteriaSessionId] = useState<string>("");
   const [showCriteriaSelector, setShowCriteriaSelector] = useState(false);
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
-  const [showTutorLanding, setShowTutorLanding] = useState(true);
+  const [isFetchingCriteria, setIsFetchingCriteria] = useState(false);
+  const [showTutorLanding, setShowTutorLanding] = useState(false);
+
+  // Two-step selection state
+  const [selectionStep, setSelectionStep] = useState<"subject" | "criteria">("subject");
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
+  const [filteredCriteria, setFilteredCriteria] = useState<EducationalCriteria[]>([]);
 
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
@@ -172,12 +180,13 @@ export default function ChatAreaEnhanced({
     fetchCriteriaList();
   }, []);
 
-  // Load last chat when rooms are loaded
+
+  // Load last chat when rooms are loaded (only if not showing tutor landing)
   useEffect(() => {
-    if (rooms.length > 0 && !selectedRoomId) {
+    if (rooms.length > 0 && !selectedRoomId && !showTutorLanding) {
       loadLastChat();
     }
-  }, [rooms, selectedRoomId]);
+  }, [rooms, selectedRoomId, showTutorLanding]);
 
   // Persist selected room ID in localStorage
   useEffect(() => {
@@ -186,10 +195,10 @@ export default function ChatAreaEnhanced({
     }
   }, [selectedRoomId]);
 
-  // Load selected room ID from localStorage on mount
+  // Load selected room ID from localStorage on mount (only if not showing tutor landing)
   useEffect(() => {
     const savedRoomId = localStorage.getItem("selectedRoomId");
-    if (savedRoomId && rooms.length > 0) {
+    if (savedRoomId && rooms.length > 0 && !showTutorLanding) {
       const roomExists = rooms.find((room) => room.roomId === savedRoomId);
       if (roomExists) {
         setSelectedRoomId(savedRoomId);
@@ -204,7 +213,7 @@ export default function ChatAreaEnhanced({
         }
       }
     }
-  }, [rooms]);
+  }, [rooms, showTutorLanding]);
 
   // Handle responsive sidebar behavior
   useEffect(() => {
@@ -227,16 +236,68 @@ export default function ChatAreaEnhanced({
 
   const fetchCriteriaList = async () => {
     try {
-      const response = await apiClient.get("/knowledge-base");
-      const criteria =
-        response.data.criteria ||
-        response.data.knowledgeBases ||
-        response.data ||
-        [];
-      setCriteriaList(Array.isArray(criteria) ? criteria : []);
+      setIsFetchingCriteria(true);
+      
+      // Hardcoded criteria list for Mathematics
+      const hardcodedCriteria = [
+        {
+          id: "math-aa-sl",
+          name: "IB Mathematics AA SL",
+          description: "International Baccalaureate Analysis and Approaches Standard Level",
+          educationalBoard: "IB",
+          subject: "Mathematics",
+          level: "AA SL",
+          totalChunks: 120,
+          totalTokens: 40000,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: "math-aa-hl",
+          name: "IB Mathematics AA HL",
+          description: "International Baccalaureate Analysis and Approaches Higher Level",
+          educationalBoard: "IB",
+          subject: "Mathematics",
+          level: "AA HL",
+          totalChunks: 150,
+          totalTokens: 50000,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: "math-ai-sl",
+          name: "IB Mathematics AI SL",
+          description: "International Baccalaureate Applications and Interpretation Standard Level",
+          educationalBoard: "IB",
+          subject: "Mathematics",
+          level: "AI SL",
+          totalChunks: 130,
+          totalTokens: 45000,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: "math-ai-hl",
+          name: "IB Mathematics AI HL",
+          description: "International Baccalaureate Applications and Interpretation Higher Level",
+          educationalBoard: "IB",
+          subject: "Mathematics",
+          level: "AI HL",
+          totalChunks: 160,
+          totalTokens: 55000,
+          createdAt: new Date().toISOString()
+        }
+      ];
+      
+      setCriteriaList(hardcodedCriteria);
+
+      // Extract unique subjects from criteria
+      const subjectSet = new Set(hardcodedCriteria.map(c => c.subject));
+      const subjects = Array.from(subjectSet);
+      setAvailableSubjects(subjects);
     } catch (error) {
-      console.error("Error fetching educational criteria:", error);
+      console.error("❌ Error setting up criteria:", error);
       setCriteriaList([]);
+      setAvailableSubjects([]);
+    } finally {
+      setIsFetchingCriteria(false);
     }
   };
 
@@ -302,6 +363,7 @@ export default function ChatAreaEnhanced({
     setCurrentSessionId(null);
     setCriteriaSessionId("");
     setSelectedCriteria("");
+    setShowTutorLanding(false); // Hide landing page when room is selected
   };
 
   // Handle criteria selection - automatically creates room
@@ -365,6 +427,31 @@ export default function ChatAreaEnhanced({
     } finally {
       setIsLoadingCriteria(false);
     }
+  };
+
+  // Handle subject selection (Step 1)
+  const handleSubjectSelection = (subject: string) => {
+    setSelectedSubject(subject);
+    
+    // Filter criteria by selected subject
+    const filtered = criteriaList.filter(c => c.subject === subject);
+    setFilteredCriteria(filtered);
+    
+    // Move to criteria selection step
+    setSelectionStep("criteria");
+  };
+
+  // Handle criteria selection (Step 2)
+  const handleCriteriaSelectionFromFiltered = async (criteriaId: string) => {
+    console.log("🎯 Criteria selected:", criteriaId);
+    await handleCriteriaSelection(criteriaId);
+  };
+
+  // Go back to subject selection
+  const handleBackToSubjectSelection = () => {
+    setSelectionStep("subject");
+    setSelectedSubject("");
+    setFilteredCriteria([]);
   };
 
   // Handle tutor selection (legacy functionality)
@@ -729,62 +816,44 @@ export default function ChatAreaEnhanced({
     }
   };
 
-  // Handle new chat
+  // Handle new chat - prompt for two-step selection
   const handleNewChat = async () => {
     if (isCreatingNewChat) return; // Prevent multiple clicks
 
     try {
       setIsCreatingNewChat(true);
 
-      // Create a new general chat room
-      const now = new Date();
-      const timestamp = now.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      // Clear current selection and reset to step 1
+      setSelectedRoomId(null);
+      setCurrentSessionId(null);
+      setMessages([]);
+      setStreamingMessage("");
+      setIsStreaming(false);
+      setSelectedCriteria("");
+      setCriteriaSessionId("");
+      setShowCriteriaSelector(false);
+      setShowTutorLanding(true); // Show the landing page
+      
+      // Reset two-step selection
+      setSelectionStep("subject");
+      setSelectedSubject("");
+      setFilteredCriteria([]);
 
-      const newRoom = await createRoom({
-        title: `New Chat - ${timestamp}`,
-        type: "general",
-        ttsSettings: {
-          selectedVoiceId: selectedVoiceId,
-          autoPlayVoice: autoPlayVoice,
-          volume: volume,
-        },
-      });
-
-      if (newRoom) {
-        // Set the new room as active
-        setSelectedRoomId(newRoom.roomId);
-
-        // Clear all legacy state
-        setCurrentSessionId(null);
-        setMessages([]);
-        setStreamingMessage("");
-        setIsStreaming(false);
-        setSelectedCriteria("");
-        setCriteriaSessionId("");
-        setShowCriteriaSelector(false);
-        setShowTutorLanding(false);
-
-        // Close sidebar on mobile after creating new chat
-        if (window.innerWidth < 1024) {
-          setShowSidebar(false);
-        }
-
-        // Show success toast
-        toast({
-          title: "New Chat Created",
-          description: "Your new chat room is ready!",
-        });
+      // Close sidebar on mobile after creating new chat
+      if (window.innerWidth < 1024) {
+        setShowSidebar(false);
       }
+
+      // Show success toast
+      toast({
+        title: "New Chat Started",
+        description: "Please select a subject and level to begin your new chat.",
+      });
     } catch (error) {
       console.error("Error creating new chat:", error);
       toast({
         title: "Error",
-        description: "Failed to create new chat room",
+        description: "Failed to create new chat. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -1007,11 +1076,13 @@ export default function ChatAreaEnhanced({
 
   const tutorInfo = getCurrentTutorInfo();
 
+
+
   // Show landing page if no room is selected and no legacy session
-  if ((showTutorLanding || !selectedCriteria) && !selectedRoomId) {
+    if ((showTutorLanding || !selectedCriteria) && !selectedRoomId) {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-16">
-        {/* Landing Page Header */}
+        {/* Header */}
         <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -1028,17 +1099,33 @@ export default function ChatAreaEnhanced({
                 </p>
               </div>
             </div>
-            <Button
-              onClick={() => setShowSidebar(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Menu className="w-4 h-4 mr-2" />
-              Chat Rooms
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={fetchCriteriaList}
+                variant="outline"
+                size="sm"
+                className="bg-white hover:bg-gray-50"
+                disabled={isFetchingCriteria}
+              >
+                <RefreshCw
+                  className={`w-4 h-4 mr-2 ${
+                    isFetchingCriteria ? "animate-spin" : ""
+                  }`}
+                />
+                {isFetchingCriteria ? "Loading..." : "Refresh"}
+              </Button>
+              <Button
+                onClick={() => setShowSidebar(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Menu className="w-4 h-4 mr-2" />
+                Chat Rooms
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Landing Page Content */}
+        {/* Main Content */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="max-w-4xl mx-auto">
             {/* Welcome Section */}
@@ -1055,9 +1142,10 @@ export default function ChatAreaEnhanced({
               </p>
             </div>
 
-            {/* Available Tutors */}
+            {/* Content Steps */}
             <div className="space-y-6">
               {!criteriaList || criteriaList.length === 0 ? (
+                /* No criteria available */
                 <div className="text-center py-12 text-gray-500">
                   <div className="p-4 bg-gray-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                     <Database className="w-10 h-10 text-gray-400" />
@@ -1070,6 +1158,9 @@ export default function ChatAreaEnhanced({
                       ? "Upload documents to create educational criteria"
                       : "No educational criteria have been uploaded yet. Contact an administrator to add criteria."}
                   </p>
+                  <div className="text-xs text-gray-400 mb-4">
+                    Debug: criteriaList length = {criteriaList?.length || 0}
+                  </div>
                   {storeUser?.role === "admin" && (
                     <Button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl px-6 py-2">
                       <BookOpen className="w-4 h-4 mr-2" />
@@ -1077,14 +1168,77 @@ export default function ChatAreaEnhanced({
                     </Button>
                   )}
                 </div>
+              ) : selectionStep === "subject" ? (
+                /* Step 1: Subject Selection */
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                      Step 1: Choose Your Subject
+                    </h3>
+                    <p className="text-gray-600">
+                      Select the subject you want to learn about
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {availableSubjects.map((subject) => (
+                      <div
+                        key={subject}
+                        className="p-6 rounded-2xl border-2 border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                        onClick={() => handleSubjectSelection(subject)}
+                      >
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
+                            <GraduationCap className="w-8 h-8" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                              {subject}
+                              <Sparkles className="w-5 h-5 text-blue-600" />
+                            </h4>
+                            <p className="text-gray-600 font-medium mb-2">
+                              {subject} Tutor
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-center">
+                          <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl">
+                            <GraduationCap className="w-4 h-4 mr-2" />
+                            Select {subject}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {criteriaList &&
-                    criteriaList.map((criteria) => (
+                /* Step 2: Criteria Selection */
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                      Step 2: Choose Your Level
+                    </h3>
+                    <p className="text-gray-600">
+                      Select the specific level for {selectedSubject}
+                    </p>
+                    <Button
+                      onClick={handleBackToSubjectSelection}
+                      variant="outline"
+                      className="mt-2"
+                    >
+                      ← Back to Subjects
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredCriteria.map((criteria) => (
                       <div
                         key={criteria.id}
                         className="p-6 rounded-2xl border-2 border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
-                        onClick={() => handleTutorSelection(criteria.id)}
+                        onClick={() =>
+                          handleCriteriaSelectionFromFiltered(criteria.id)
+                        }
                       >
                         <div className="flex items-center gap-4 mb-4">
                           <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
@@ -1102,19 +1256,18 @@ export default function ChatAreaEnhanced({
                         </div>
 
                         <div className="space-y-3">
-                          <div className="flex items-center gap-4">
-                            <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                          <div className="flex items-center justify-between text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Crown className="w-4 h-4" />
                               {criteria.educationalBoard}
                             </span>
-                            <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium">
-                              {criteria.subject}
-                            </span>
-                            <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium">
+                            <span className="flex items-center gap-1">
+                              <BookOpen className="w-4 h-4" />
                               {criteria.level}
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between text-sm text-gray-500">
+                          <div className="flex items-center justify-between text-xs text-gray-400">
                             <span>{criteria.totalChunks} chunks</span>
                             <span>
                               {criteria.totalTokens.toLocaleString()} tokens
@@ -1130,6 +1283,7 @@ export default function ChatAreaEnhanced({
                         </div>
                       </div>
                     ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1138,9 +1292,10 @@ export default function ChatAreaEnhanced({
       </div>
     );
   }
+  
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-white">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-white overflow-hidden">
       {/* Mobile Overlay */}
       {showSidebar && (
         <div
@@ -1168,7 +1323,7 @@ export default function ChatAreaEnhanced({
       )}
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Enhanced Header */}
         <TutorHeader
           selectedVoiceId={selectedVoiceId}
@@ -1202,7 +1357,7 @@ export default function ChatAreaEnhanced({
         {/* Messages Container - Scrollable */}
         <div
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto px-6 py-4 bg-gradient-to-r from-green-50/30 via-slate-50/20 to-white/50"
+          className="flex-1 overflow-y-auto px-6 py-4 bg-gradient-to-r from-green-50/30 via-slate-50/20 to-white/50 min-h-0"
           onScroll={handleScroll}
         >
           {/* Loading more messages indicator */}
