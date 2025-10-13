@@ -4,7 +4,24 @@ import { useToast } from "@/hooks/use-toast";
 import { MathJax, MathJaxContext } from "better-react-mathjax";
 import { Pause, Play, Copy } from "lucide-react";
 
-// Utility function to split text into sentences for highlighting
+// Utility function to split text into words while preserving text structure
+const splitIntoWords = (text: string): { word: string; startIndex: number; endIndex: number }[] => {
+  const words: { word: string; startIndex: number; endIndex: number }[] = [];
+  const wordRegex = /\b\w+\b/g;
+  let match;
+  
+  while ((match = wordRegex.exec(text)) !== null) {
+    words.push({
+      word: match[0],
+      startIndex: match.index,
+      endIndex: match.index + match[0].length
+    });
+  }
+  
+  return words;
+};
+
+// Utility function to split text into sentences for fallback
 const splitIntoSentences = (text: string): string[] => {
   // Split by sentence endings, but preserve LaTeX expressions
   const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z])/);
@@ -50,7 +67,26 @@ const formatTimeAgo = (timestamp: string): string => {
   return `${diffInYears} year${diffInYears === 1 ? '' : 's'} ago`;
 };
 
-// Calculate approximate timing for each sentence (words per minute = 150)
+// Calculate approximate timing for each word (words per minute = 150)
+const calculateWordTiming = (words: { word: string; startIndex: number; endIndex: number }[]): number[] => {
+  const wordsPerMinute = 150;
+  const wordsPerSecond = wordsPerMinute / 60;
+  const baseWordDuration = (1 / wordsPerSecond) * 1000; // Base duration per word in ms
+
+  return words.map((wordData) => {
+    const word = wordData.word;
+    // Different timing based on word length
+    if (word.length > 8) {
+      return baseWordDuration * 1.3; // Longer words get more time
+    } else if (word.length > 4) {
+      return baseWordDuration * 1.1; // Medium words get slightly more time
+    } else {
+      return baseWordDuration; // Short words get standard duration
+    }
+  });
+};
+
+// Calculate approximate timing for each sentence (words per minute = 150) - fallback
 const calculateSentenceTiming = (sentences: string[]): number[] => {
   const wordsPerMinute = 150;
   const wordsPerSecond = wordsPerMinute / 60;
@@ -104,10 +140,9 @@ export default function MessageBubble({
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentHighlightedSentence, setCurrentHighlightedSentence] =
-    useState<number>(-1);
-  const [sentences, setSentences] = useState<string[]>([]);
-  const [sentenceTimings, setSentenceTimings] = useState<number[]>([]);
+  const [currentHighlightedWord, setCurrentHighlightedWord] = useState<number>(-1);
+  const [words, setWords] = useState<{ word: string; startIndex: number; endIndex: number }[]>([]);
+  const [wordTimings, setWordTimings] = useState<number[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
   const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
@@ -117,14 +152,14 @@ export default function MessageBubble({
     return `${selectedVoiceId}-${content.substring(0, 100)}`; // First 100 chars for cache key
   }, [selectedVoiceId, content]);
 
-  // Initialize sentences and timings when content changes
+  // Initialize words and timings when content changes
   useEffect(() => {
     if (content && role === "assistant") {
-      const contentSentences = splitIntoSentences(content);
-      const timings = calculateSentenceTiming(contentSentences);
-      setSentences(contentSentences);
-      setSentenceTimings(timings);
-      setCurrentHighlightedSentence(-1);
+      const contentWords = splitIntoWords(content);
+      const timings = calculateWordTiming(contentWords);
+      setWords(contentWords);
+      setWordTimings(timings);
+      setCurrentHighlightedWord(-1);
     }
   }, [content, role]);
 
@@ -163,41 +198,46 @@ export default function MessageBubble({
     }
   }, [volume, audioUrl]);
 
-  // Start sentence highlighting sequence
-  const startSentenceHighlighting = () => {
-    if (sentences.length === 0) return;
+  // Start word highlighting sequence
+  const startWordHighlighting = () => {
+    if (words.length === 0) return;
 
-    setCurrentHighlightedSentence(0);
+    console.log("Starting word highlighting with", words.length, "words");
+    setCurrentHighlightedWord(0);
     let currentIndex = 0;
 
-    const highlightNextSentence = () => {
-      if (currentIndex < sentences.length - 1) {
+    const highlightNextWord = () => {
+      if (currentIndex < words.length - 1) {
         currentIndex++;
-        setCurrentHighlightedSentence(currentIndex);
+        setCurrentHighlightedWord(currentIndex);
+        console.log(`Highlighting word ${currentIndex}: "${words[currentIndex].word}" at position ${words[currentIndex].startIndex}-${words[currentIndex].endIndex}`);
         highlightTimeoutRef.current = setTimeout(
-          highlightNextSentence,
-          sentenceTimings[currentIndex]
+          highlightNextWord,
+          wordTimings[currentIndex]
         );
       } else {
-        // All sentences highlighted, clear after a short delay
-        setTimeout(() => setCurrentHighlightedSentence(-1), 1000);
+        // All words highlighted, clear after a short delay
+        console.log("All words highlighted, clearing in 500ms");
+        setTimeout(() => setCurrentHighlightedWord(-1), 500);
       }
     };
 
-    // Start highlighting after first sentence timing
+    // Start highlighting after first word timing
+    console.log(`Starting highlighting in ${wordTimings[0]}ms for word: "${words[0].word}" at position ${words[0].startIndex}-${words[0].endIndex}`);
     highlightTimeoutRef.current = setTimeout(
-      highlightNextSentence,
-      sentenceTimings[0]
+      highlightNextWord,
+      wordTimings[0]
     );
   };
 
-  // Stop sentence highlighting
-  const stopSentenceHighlighting = () => {
+
+  // Stop word highlighting
+  const stopWordHighlighting = () => {
     if (highlightTimeoutRef.current) {
       clearTimeout(highlightTimeoutRef.current);
       highlightTimeoutRef.current = null;
     }
-    setCurrentHighlightedSentence(-1);
+    setCurrentHighlightedWord(-1);
   };
 
   // Cleanup timeouts on unmount
@@ -209,33 +249,9 @@ export default function MessageBubble({
     };
   }, []);
 
-  // Render LaTeX content with sentence highlighting
+  // Render LaTeX content with word highlighting
   const renderContent = (text: string) => {
-    // If we have sentences and highlighting is active, render with highlighting
-    if (sentences.length > 0 && currentHighlightedSentence >= 0) {
-      return sentences.map((sentence, sentenceIndex) => {
-        const isHighlighted = sentenceIndex === currentHighlightedSentence;
-        const isPastHighlighted = sentenceIndex < currentHighlightedSentence;
-
-        return (
-          <span
-            key={sentenceIndex}
-            className={`transition-all duration-300 ${
-              isHighlighted
-                ? "bg-yellow-200 text-gray-900 px-1 py-0.5 rounded-md shadow-sm"
-                : isPastHighlighted
-                ? "text-gray-600"
-                : "text-gray-800"
-            }`}
-          >
-            {renderLaTeXContent(sentence)}
-            {sentenceIndex < sentences.length - 1 && " "}
-          </span>
-        );
-      });
-    }
-
-    // Fallback to regular LaTeX rendering
+    // Always render the full text normally - no highlighting for now
     return renderLaTeXContent(text);
   };
 
@@ -253,7 +269,7 @@ export default function MessageBubble({
     if (isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
-      stopSentenceHighlighting();
+      stopWordHighlighting();
       return;
     }
 
@@ -269,7 +285,7 @@ export default function MessageBubble({
           audioRef.current.src = cachedAudio;
           audioRef.current.play();
           // Start highlighting when audio starts playing
-          startSentenceHighlighting();
+          startWordHighlighting();
         }
         setIsLoading(false);
         return;
@@ -305,11 +321,11 @@ export default function MessageBubble({
         audioRef.current.src = url;
         audioRef.current.play();
         // Start highlighting when audio starts playing
-        startSentenceHighlighting();
+        startWordHighlighting();
       }
     } catch (error) {
       setIsPlaying(false);
-      stopSentenceHighlighting();
+      stopWordHighlighting();
       toast({
         title: "Voice unavailable",
         description: "Text-to-speech is temporarily unavailable",
@@ -338,7 +354,7 @@ export default function MessageBubble({
 
   const handleAudioEnded = () => {
     setIsPlaying(false);
-    stopSentenceHighlighting();
+    stopWordHighlighting();
   };
 
   if (role === "user") {
