@@ -373,16 +373,7 @@ export default function ModernSidebar({
                     </>
                   )}
                 </Button>
-                <Button
-                  onClick={() => loadRooms()}
-                  className="w-full justify-start"
-                  variant="ghost"
-                  size="sm"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh Rooms
-                </Button>
-              </div>
+                             </div>
 
               {/* Available Rooms Sub-menu */}
               <Collapsible
@@ -420,22 +411,7 @@ export default function ModernSidebar({
                       />
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Filter className="w-4 h-4 text-slate-400" />
-                      <Select value={filterType} onValueChange={setFilterType}>
-                        <SelectTrigger className="w-full h-9 text-sm rounded-lg border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Types</SelectItem>
-                          <SelectItem value="general">General</SelectItem>
-                          <SelectItem value="educational-criteria">
-                            Educational Criteria
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                                    </div>
 
                   {/* Rooms List */}
                   <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 pr-2">

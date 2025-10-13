@@ -64,6 +64,13 @@ const ChatSessionSchema = new mongoose.Schema({
   lastActivity: {
     type: Date,
     default: Date.now
+  },
+  metadata: {
+    tutorId: String,
+    criteriaId: String,
+    tutorType: String,
+    level: String,
+    knowledgeBaseId: String
   }
 });
 

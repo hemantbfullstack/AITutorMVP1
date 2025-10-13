@@ -10,7 +10,10 @@
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
-    "seed": "dotenv -e .env.development -- tsx server/seed.ts"
+    "seed": "dotenv -e .env.development -- tsx server/seed.ts",
+    "seed:production": "dotenv -e .env -- tsx server/seed-production.ts",
+    "seed:admin": "dotenv -e .env -- tsx server/seed-production.ts --admin-only",
+    "seed:criteria": "dotenv -e .env -- tsx server/seed-production.ts --criteria-only"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

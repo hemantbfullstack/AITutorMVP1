@@ -88,21 +88,18 @@ export default function ChatAreaEnhanced({
   const [autoPlayVoice, setAutoPlayVoice] = useState(false);
   const [volume, setVolume] = useState(0.7);
 
-  // Educational criteria state
-  const [tutorMode, setTutorMode] = useState<"ib" | "criteria">("criteria");
-  const [criteriaList, setCriteriaList] = useState<EducationalCriteria[]>([]);
-  const [selectedCriteria, setSelectedCriteria] = useState<string>("");
+  // Knowledge Base state
+  const [knowledgeBases, setKnowledgeBases] = useState<any[]>([]);
+  const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState<string>("");
+  const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const [availableLevels, setAvailableLevels] = useState<any[]>([]);
   const [criteriaSessionId, setCriteriaSessionId] = useState<string>("");
+  const [showTutorSelector, setShowTutorSelector] = useState(false);
   const [showCriteriaSelector, setShowCriteriaSelector] = useState(false);
-  const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
-  const [isFetchingCriteria, setIsFetchingCriteria] = useState(false);
+  const [isLoadingKnowledgeBase, setIsLoadingKnowledgeBase] = useState(false);
+  const [isFetchingKnowledgeBases, setIsFetchingKnowledgeBases] = useState(false);
   const [showTutorLanding, setShowTutorLanding] = useState(false);
-
-  // Two-step selection state
-  const [selectionStep, setSelectionStep] = useState<"subject" | "criteria">("subject");
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
-  const [filteredCriteria, setFilteredCriteria] = useState<EducationalCriteria[]>([]);
+  const [selectionStep, setSelectionStep] = useState<'knowledgeBase' | 'level'>('knowledgeBase');
 
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
@@ -164,9 +161,12 @@ export default function ChatAreaEnhanced({
           setSelectedRoomId(lastRoom.roomId);
           setShowTutorLanding(false);
 
-          // If it's an educational criteria room, set the criteria
+          // If it's an educational criteria room, set the level and session ID
           if (lastRoom.type === "educational-criteria" && lastRoom.criteriaId) {
-            setSelectedCriteria(lastRoom.criteriaId);
+            setSelectedLevel(lastRoom.criteriaId);
+            if (lastRoom.sessionId) {
+              setCriteriaSessionId(lastRoom.sessionId);
+            }
           }
         }
       }
@@ -175,9 +175,9 @@ export default function ChatAreaEnhanced({
     }
   };
 
-  // Fetch educational criteria on component mount
+  // Fetch knowledge bases on component mount
   useEffect(() => {
-    fetchCriteriaList();
+    fetchKnowledgeBases();
   }, []);
 
 
@@ -204,12 +204,12 @@ export default function ChatAreaEnhanced({
         setSelectedRoomId(savedRoomId);
         setShowTutorLanding(false);
 
-        // If it's an educational criteria room, set the criteria
+        // If it's an educational criteria room, set the level
         if (
           roomExists.type === "educational-criteria" &&
           roomExists.criteriaId
         ) {
-          setSelectedCriteria(roomExists.criteriaId);
+          setSelectedLevel(roomExists.criteriaId);
         }
       }
     }
@@ -234,70 +234,18 @@ export default function ChatAreaEnhanced({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const fetchCriteriaList = async () => {
+  const fetchKnowledgeBases = async () => {
     try {
-      setIsFetchingCriteria(true);
+      setIsFetchingKnowledgeBases(true);
       
-      // Hardcoded criteria list for Mathematics
-      const hardcodedCriteria = [
-        {
-          id: "math-aa-sl",
-          name: "IB Mathematics AA SL",
-          description: "International Baccalaureate Analysis and Approaches Standard Level",
-          educationalBoard: "IB",
-          subject: "Mathematics",
-          level: "AA SL",
-          totalChunks: 120,
-          totalTokens: 40000,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: "math-aa-hl",
-          name: "IB Mathematics AA HL",
-          description: "International Baccalaureate Analysis and Approaches Higher Level",
-          educationalBoard: "IB",
-          subject: "Mathematics",
-          level: "AA HL",
-          totalChunks: 150,
-          totalTokens: 50000,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: "math-ai-sl",
-          name: "IB Mathematics AI SL",
-          description: "International Baccalaureate Applications and Interpretation Standard Level",
-          educationalBoard: "IB",
-          subject: "Mathematics",
-          level: "AI SL",
-          totalChunks: 130,
-          totalTokens: 45000,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: "math-ai-hl",
-          name: "IB Mathematics AI HL",
-          description: "International Baccalaureate Applications and Interpretation Higher Level",
-          educationalBoard: "IB",
-          subject: "Mathematics",
-          level: "AI HL",
-          totalChunks: 160,
-          totalTokens: 55000,
-          createdAt: new Date().toISOString()
-        }
-      ];
-      
-      setCriteriaList(hardcodedCriteria);
-
-      // Extract unique subjects from criteria
-      const subjectSet = new Set(hardcodedCriteria.map(c => c.subject));
-      const subjects = Array.from(subjectSet);
-      setAvailableSubjects(subjects);
+      const response = await apiClient.get("/knowledge-base");
+      if (response.data.success) {
+        setKnowledgeBases(response.data.criteria);
+      }
     } catch (error) {
-      console.error("❌ Error setting up criteria:", error);
-      setCriteriaList([]);
-      setAvailableSubjects([]);
+      console.error("Error fetching knowledge bases:", error);
     } finally {
-      setIsFetchingCriteria(false);
+      setIsFetchingKnowledgeBases(false);
     }
   };
 
@@ -361,103 +309,178 @@ export default function ChatAreaEnhanced({
     // Clear legacy state when switching to new room
     setMessages([]);
     setCurrentSessionId(null);
-    setCriteriaSessionId("");
-    setSelectedCriteria("");
+    setSelectedLevel("");
     setShowTutorLanding(false); // Hide landing page when room is selected
+
+    // Load session information for educational criteria rooms
+    try {
+      const room = rooms.find(r => r.roomId === roomId);
+      console.log("Room selected:", { 
+        roomId, 
+        room: room ? { 
+          type: room.type, 
+          sessionId: room.sessionId,
+          criteriaId: room.criteriaId,
+          title: room.title
+        } : null 
+      });
+      if (room && room.type === "educational-criteria" && room.sessionId) {
+        console.log("Setting criteriaSessionId:", room.sessionId);
+        setCriteriaSessionId(room.sessionId);
+      } else {
+        console.log("No sessionId found for educational criteria room");
+        setCriteriaSessionId(""); // Only clear if no session found
+      }
+    } catch (error) {
+      console.error("Error loading session for room:", error);
+      setCriteriaSessionId(""); // Only clear on error
+    }
   };
 
-  // Handle criteria selection - automatically creates room
-  const handleCriteriaSelection = async (criteriaId: string) => {
-    if (!criteriaId) return;
+  // Handle knowledge base selection - shows available levels
+  const handleKnowledgeBaseSelection = async (knowledgeBaseId: string) => {
+    if (!knowledgeBaseId) return;
 
-    setIsLoadingCriteria(true);
+    setIsLoadingKnowledgeBase(true);
     try {
-      // Always create a new room for each criteria selection to ensure fresh start
-      const criteria = criteriaList.find((c) => c.id === criteriaId);
-      const roomTitle = `${
-        criteria?.name || "Educational Criteria"
-      } - ${new Date().toLocaleDateString()}`;
+      // Find the selected knowledge base
+      const knowledgeBase = knowledgeBases.find((kb) => kb.id === knowledgeBaseId);
+      if (!knowledgeBase) {
+        throw new Error("Knowledge base not found");
+      }
+
+      // Extract tutor type from the knowledge base level (AA or AI)
+      const tutorType = knowledgeBase.level.includes('AA') ? 'AA' : knowledgeBase.level.includes('AI') ? 'AI' : 'Unknown';
+      
+      // Create SL and HL options for the selected tutor
+      const levels = [
+        {
+          id: `${knowledgeBaseId}-SL`,
+          name: `${knowledgeBase.name} - SL`,
+          description: `Standard Level for ${knowledgeBase.educationalBoard} ${knowledgeBase.subject}`,
+          level: 'SL',
+          fullLevel: `${tutorType} SL`,
+          educationalBoard: knowledgeBase.educationalBoard,
+          subject: knowledgeBase.subject,
+          totalChunks: knowledgeBase.totalChunks,
+          totalTokens: knowledgeBase.totalTokens,
+          fileCount: knowledgeBase.fileCount,
+          originalId: knowledgeBaseId
+        },
+        {
+          id: `${knowledgeBaseId}-HL`,
+          name: `${knowledgeBase.name} - HL`,
+          description: `Higher Level for ${knowledgeBase.educationalBoard} ${knowledgeBase.subject}`,
+          level: 'HL',
+          fullLevel: `${tutorType} HL`,
+          educationalBoard: knowledgeBase.educationalBoard,
+          subject: knowledgeBase.subject,
+          totalChunks: knowledgeBase.totalChunks,
+          totalTokens: knowledgeBase.totalTokens,
+          fileCount: knowledgeBase.fileCount,
+          originalId: knowledgeBaseId
+        }
+      ];
+
+      setSelectedKnowledgeBase(knowledgeBaseId);
+      setAvailableLevels(levels);
+      setSelectionStep('level');
+      setShowCriteriaSelector(false);
+    } catch (error) {
+      console.error("Knowledge base selection error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to select knowledge base",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingKnowledgeBase(false);
+    }
+  };
+
+  // Handle level selection - creates room and session
+  const handleLevelSelection = async (levelId: string) => {
+    if (!levelId || !selectedKnowledgeBase) return;
+
+    setIsLoadingKnowledgeBase(true);
+    try {
+      // Find the selected level knowledge base
+      const levelKB = availableLevels.find((level) => level.id === levelId);
+      if (!levelKB) {
+        throw new Error("Level knowledge base not found");
+      }
+
+      // Use the original knowledge base ID for the session
+      const originalKnowledgeBaseId = levelKB.originalId || selectedKnowledgeBase;
+      
+      // Create a room for this knowledge base
+      const roomTitle = `${levelKB.name} - ${new Date().toLocaleDateString()}`;
 
       const room = await createRoom({
         title: roomTitle,
         type: "educational-criteria",
-        criteriaId: criteriaId,
+        criteriaId: originalKnowledgeBaseId,
       });
 
       if (room) {
         setSelectedRoomId(room.roomId);
-        setSelectedCriteria(criteriaId);
+        setSelectedLevel(levelId);
         setShowCriteriaSelector(false);
         setShowTutorLanding(false);
 
-        // Create a session for this criteria
+        // Create a session for this knowledge base
         try {
           const response = await apiClient.post("/chat/session", {
-            criteriaId: criteriaId,
+            knowledgeBaseId: originalKnowledgeBaseId,
+            level: levelKB.level, // Pass the selected level (SL or HL)
           });
+
+          // Set the criteria session ID for message processing
+          setCriteriaSessionId(response.data.session.sessionId);
 
           // Update the room with the session ID
           await chatApi.updateChatRoom(room.roomId, {
             sessionId: response.data.session.sessionId,
           });
 
+          // Update the session with the room ID
+          await apiClient.put(`/chat/session/${response.data.session.sessionId}`, {
+            roomId: room.roomId,
+          });
+
           toast({
-            title: "Educational Criteria Selected",
-            description: `Now using ${
-              criteriaList.find((c) => c.id === criteriaId)?.name || "Unknown"
-            } criteria for instruction-driven responses.`,
+            title: "Knowledge Base and Level Selected",
+            description: `Now using ${levelKB.name} for instruction-driven responses.`,
           });
         } catch (sessionError) {
           console.error("Session creation error:", sessionError);
           toast({
             title: "Warning",
             description:
-              "Educational criteria selected, but session creation failed. Some features may not work properly.",
+              "Knowledge base and level selected, but session creation failed. Some features may not work properly.",
             variant: "destructive",
           });
         }
       }
     } catch (error) {
-      console.error("Criteria selection error:", error);
+      console.error("Level selection error:", error);
       toast({
         title: "Error",
-        description: "Failed to select educational criteria",
+        description: "Failed to select level",
         variant: "destructive",
       });
     } finally {
-      setIsLoadingCriteria(false);
+      setIsLoadingKnowledgeBase(false);
     }
   };
 
-  // Handle subject selection (Step 1)
-  const handleSubjectSelection = (subject: string) => {
-    setSelectedSubject(subject);
-    
-    // Filter criteria by selected subject
-    const filtered = criteriaList.filter(c => c.subject === subject);
-    setFilteredCriteria(filtered);
-    
-    // Move to criteria selection step
-    setSelectionStep("criteria");
+  // Handle back to knowledge base selection
+  const handleBackToKnowledgeBaseSelection = () => {
+    setSelectionStep("knowledgeBase");
+    setSelectedKnowledgeBase("");
+    setAvailableLevels([]);
   };
 
-  // Handle criteria selection (Step 2)
-  const handleCriteriaSelectionFromFiltered = async (criteriaId: string) => {
-    console.log("🎯 Criteria selected:", criteriaId);
-    await handleCriteriaSelection(criteriaId);
-  };
-
-  // Go back to subject selection
-  const handleBackToSubjectSelection = () => {
-    setSelectionStep("subject");
-    setSelectedSubject("");
-    setFilteredCriteria([]);
-  };
-
-  // Handle tutor selection (legacy functionality)
-  const handleTutorSelection = async (criteriaId: string) => {
-    await handleCriteriaSelection(criteriaId);
-  };
 
   // Send message using new chat system
   const sendMessageToRoom = async (content: string, image?: File) => {
@@ -483,6 +506,154 @@ export default function ChatAreaEnhanced({
     }
 
     if (!content.trim() && !image) return;
+
+    // Check for visual requests and handle WolframAlpha
+    const needsVisual = detectVisualRequest(content);
+    if (needsVisual) {
+      const wolframQuery = generateWolframQuery(content);
+      if (wolframQuery) {
+        try {
+          // Add user message to room first
+          const userMessage = await chatApi.sendTextMessage(
+            selectedRoomId,
+            content
+          );
+          addMessage(userMessage);
+
+          const imageBase64 = await fetchWolframImage(wolframQuery);
+
+          // Create a more contextual message based on the request type
+          let visualMessage = "";
+          if (
+            content.toLowerCase().includes("explain") ||
+            content.toLowerCase().includes("help with")
+          ) {
+            visualMessage = `Here's a visual representation to help explain ${content
+              .replace(
+                /(?:explain|help with|illustrate|demonstrate|show how)\s+/i,
+                ""
+              )
+              .replace(
+                /\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i,
+                ""
+              )}:`;
+          } else if (
+            content.toLowerCase().includes("show me") ||
+            content.toLowerCase().includes("create") ||
+            content.toLowerCase().includes("generate")
+          ) {
+            visualMessage = `Here's the visualization you requested:`;
+          } else {
+            visualMessage = `Here's the visualization of ${wolframQuery.replace(
+              /^plot\s+/i,
+              ""
+            )}:`;
+          }
+
+          // Send WolframAlpha message to room
+          const wolframMessage = await chatApi.sendWolframMessage(
+            selectedRoomId,
+            visualMessage,
+            imageBase64,
+            ""
+          );
+          addMessage(wolframMessage);
+
+          // Generate follow-up explanation after WolframAlpha image
+          console.log("About to generate follow-up explanation for WolframAlpha in room");
+          
+          // Get AI response from session system and add to room messages
+          try {
+            console.log("criteriaSessionId:", criteriaSessionId);
+            console.log("selectedRoomId:", selectedRoomId);
+            console.log("currentRoom:", currentRoom);
+            if (criteriaSessionId) {
+              console.log("Calling session API for AI response...");
+              
+              // Show thinking loader
+              setIsStreaming(true);
+              setStreamingMessage("Tutor is thinking...");
+              
+              const response = await apiClient.post("/chat/message", {
+                sessionId: criteriaSessionId,
+                message: content,
+                isVoice: false,
+              });
+              console.log("Session API response:", response.data);
+
+              console.log("Creating room message with AI response...");
+              // Add AI response to room messages
+              const assistantMessage = await chatApi.sendTextMessage(
+                selectedRoomId,
+                response.data.response.content,
+                "assistant"
+              );
+              console.log("Room message created:", assistantMessage);
+              addMessage(assistantMessage);
+              console.log("Message added to room messages");
+            } else {
+              console.log("No criteriaSessionId available, trying to create session...");
+              
+              // Try to create a session if we have a room with criteriaId
+              if (currentRoom && currentRoom.type === "educational-criteria" && currentRoom.criteriaId) {
+                try {
+                  console.log("Creating session for room:", currentRoom.roomId);
+                  
+                  // Show thinking loader
+                  setIsStreaming(true);
+                  setStreamingMessage("Tutor is thinking...");
+                  
+                  const response = await apiClient.post("/chat/session", {
+                    knowledgeBaseId: currentRoom.criteriaId,
+                    level: "SL", // Default level, could be improved
+                  });
+                  
+                  console.log("Session created:", response.data.session.sessionId);
+                  setCriteriaSessionId(response.data.session.sessionId);
+                  
+                  // Update the room with the session ID
+                  await chatApi.updateChatRoom(currentRoom.roomId, {
+                    sessionId: response.data.session.sessionId,
+                  });
+                  
+                  // Now retry the message
+                  const messageResponse = await apiClient.post("/chat/message", {
+                    sessionId: response.data.session.sessionId,
+                    message: content,
+                    isVoice: false,
+                  });
+                  
+                  console.log("Message response after session creation:", messageResponse.data);
+                  
+                  // Add AI response to room messages
+                  const assistantMessage = await chatApi.sendTextMessage(
+                    selectedRoomId,
+                    messageResponse.data.response.content,
+                    "assistant"
+                  );
+                  addMessage(assistantMessage);
+                  
+                } catch (sessionError) {
+                  console.error("Failed to create session:", sessionError);
+                }
+              } else {
+                console.log("No room or criteriaId available for session creation");
+              }
+            }
+          } catch (error) {
+            console.error("Failed to generate follow-up explanation:", error);
+            console.error("Error details:", error.response?.data);
+          } finally {
+            // Hide thinking loader
+            setIsStreaming(false);
+            setStreamingMessage("");
+          }
+          return;
+        } catch (error) {
+          console.error("❌ Wolfram processing failed:", error);
+        }
+      }
+    }
 
     try {
       // Add user message to room
@@ -601,13 +772,23 @@ export default function ChatAreaEnhanced({
       // If no session exists, create one
       if (!sessionId && currentRoom?.type === "educational-criteria") {
         const response = await apiClient.post("/chat/session", {
-          criteriaId: currentRoom.criteriaId,
+          knowledgeBaseId: currentRoom.criteriaId,
         });
         sessionId = response.data.session.sessionId;
+
+        // Set the criteria session ID for message processing
+        if (sessionId) {
+          setCriteriaSessionId(sessionId as string);
+        }
 
         // Update the room with the session ID
         await chatApi.updateChatRoom(currentRoom.roomId, {
           sessionId: sessionId,
+        });
+
+        // Update the session with the room ID
+        await apiClient.put(`/chat/session/${sessionId}`, {
+          roomId: currentRoom.roomId,
         });
       }
 
@@ -763,6 +944,10 @@ export default function ChatAreaEnhanced({
             wolframGenerated: true,
           };
           setMessages((prev) => [...prev, wolframMessage]);
+
+          // Generate follow-up explanation after WolframAlpha image
+          console.log("About to call sendCriteriaMessage for WolframAlpha follow-up");
+          await sendCriteriaMessage(message);
           return;
         } catch (error) {
           console.error("❌ Wolfram processing failed:", error);
@@ -774,7 +959,11 @@ export default function ChatAreaEnhanced({
   };
 
   const sendCriteriaMessage = async (message: string) => {
-    if (!criteriaSessionId || !message.trim()) return;
+    console.log("sendCriteriaMessage called with:", { criteriaSessionId, message: message.trim() });
+    if (!criteriaSessionId || !message.trim()) {
+      console.log("sendCriteriaMessage early return - missing criteriaSessionId or empty message");
+      return;
+    }
 
     setIsStreaming(true);
     setStreamingMessage("");
@@ -823,21 +1012,19 @@ export default function ChatAreaEnhanced({
     try {
       setIsCreatingNewChat(true);
 
-      // Clear current selection and reset to step 1
+      // Clear current selection
       setSelectedRoomId(null);
       setCurrentSessionId(null);
       setMessages([]);
       setStreamingMessage("");
       setIsStreaming(false);
-      setSelectedCriteria("");
+      setSelectedKnowledgeBase("");
+      setSelectedLevel("");
+      setAvailableLevels([]);
       setCriteriaSessionId("");
       setShowCriteriaSelector(false);
       setShowTutorLanding(true); // Show the landing page
-      
-      // Reset two-step selection
-      setSelectionStep("subject");
-      setSelectedSubject("");
-      setFilteredCriteria([]);
+      setSelectionStep("knowledgeBase"); // Reset to first step
 
       // Close sidebar on mobile after creating new chat
       if (window.innerWidth < 1024) {
@@ -1032,9 +1219,7 @@ export default function ChatAreaEnhanced({
     };
     setMessages((prev) => [...prev, imageMessage]);
 
-    if (tutorMode === "ib") {
-      // Handle IB tutor logic here
-    }
+    // Handle knowledge base logic here if needed
   };
 
   // Get current tutor display info
@@ -1050,12 +1235,12 @@ export default function ChatAreaEnhanced({
       };
     }
 
-    if (selectedCriteria) {
-      const criteria = criteriaList?.find((c) => c.id === selectedCriteria);
+    if (selectedLevel) {
+      const levelKB = availableLevels?.find((level) => level.id === selectedLevel);
       return {
-        title: `Educational Criteria: ${criteria?.name || "Unknown"}`,
+        title: `Knowledge Base: ${levelKB?.name || "Unknown"}`,
         description:
-          criteria?.description ||
+          levelKB?.description ||
           "Instruction-driven responses based on educational standards",
         icon: <Database className="w-6 h-6 text-blue-600" />,
         gradient: "from-blue-500 to-purple-600",
@@ -1079,7 +1264,7 @@ export default function ChatAreaEnhanced({
 
 
   // Show landing page if no room is selected and no legacy session
-    if ((showTutorLanding || !selectedCriteria) && !selectedRoomId) {
+    if ((showTutorLanding || !selectedLevel) && !selectedRoomId) {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-16">
         {/* Header */}
@@ -1101,18 +1286,18 @@ export default function ChatAreaEnhanced({
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={fetchCriteriaList}
+                onClick={() => fetchKnowledgeBases()}
                 variant="outline"
                 size="sm"
                 className="bg-white hover:bg-gray-50"
-                disabled={isFetchingCriteria}
+                disabled={isFetchingKnowledgeBases}
               >
                 <RefreshCw
                   className={`w-4 h-4 mr-2 ${
-                    isFetchingCriteria ? "animate-spin" : ""
+                    isFetchingKnowledgeBases ? "animate-spin" : ""
                   }`}
                 />
-                {isFetchingCriteria ? "Loading..." : "Refresh"}
+                {isFetchingKnowledgeBases ? "Loading..." : "Refresh"}
               </Button>
               <Button
                 onClick={() => setShowSidebar(true)}
@@ -1142,24 +1327,24 @@ export default function ChatAreaEnhanced({
               </p>
             </div>
 
-            {/* Content Steps */}
+            {/* Two-Step Selection */}
             <div className="space-y-6">
-              {!criteriaList || criteriaList.length === 0 ? (
-                /* No criteria available */
+              {!knowledgeBases || knowledgeBases.length === 0 ? (
+                /* No knowledge bases available */
                 <div className="text-center py-12 text-gray-500">
                   <div className="p-4 bg-gray-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                     <Database className="w-10 h-10 text-gray-400" />
                   </div>
                   <h4 className="text-lg font-semibold text-gray-700 mb-2">
-                    No Educational Tutors Available
+                    No Knowledge Bases Available
                   </h4>
                   <p className="text-gray-500 mb-4">
                     {storeUser?.role === "admin"
-                      ? "Upload documents to create educational criteria"
-                      : "No educational criteria have been uploaded yet. Contact an administrator to add criteria."}
+                      ? "Upload documents to create knowledge bases"
+                      : "No knowledge bases have been configured yet. Contact an administrator to add knowledge bases."}
                   </p>
                   <div className="text-xs text-gray-400 mb-4">
-                    Debug: criteriaList length = {criteriaList?.length || 0}
+                    Debug: knowledgeBases length = {knowledgeBases?.length || 0}
                   </div>
                   {storeUser?.role === "admin" && (
                     <Button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl px-6 py-2">
@@ -1168,77 +1353,24 @@ export default function ChatAreaEnhanced({
                     </Button>
                   )}
                 </div>
-              ) : selectionStep === "subject" ? (
-                /* Step 1: Subject Selection */
+              ) : selectionStep === "knowledgeBase" ? (
+                /* Step 1: Knowledge Base Selection */
                 <div className="space-y-6">
                   <div className="text-center">
                     <h3 className="text-2xl font-bold text-gray-800 mb-2">
                       Step 1: Choose Your Subject
                     </h3>
                     <p className="text-gray-600">
-                      Select the subject you want to learn about
+                      Select a subject to start learning with AI tutoring
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {availableSubjects.map((subject) => (
+                    {knowledgeBases.map((kb) => (
                       <div
-                        key={subject}
+                        key={kb.id}
                         className="p-6 rounded-2xl border-2 border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
-                        onClick={() => handleSubjectSelection(subject)}
-                      >
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
-                            <GraduationCap className="w-8 h-8" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                              {subject}
-                              <Sparkles className="w-5 h-5 text-blue-600" />
-                            </h4>
-                            <p className="text-gray-600 font-medium mb-2">
-                              {subject} Tutor
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex items-center justify-center">
-                          <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl">
-                            <GraduationCap className="w-4 h-4 mr-2" />
-                            Select {subject}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* Step 2: Criteria Selection */
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                      Step 2: Choose Your Level
-                    </h3>
-                    <p className="text-gray-600">
-                      Select the specific level for {selectedSubject}
-                    </p>
-                    <Button
-                      onClick={handleBackToSubjectSelection}
-                      variant="outline"
-                      className="mt-2"
-                    >
-                      ← Back to Subjects
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCriteria.map((criteria) => (
-                      <div
-                        key={criteria.id}
-                        className="p-6 rounded-2xl border-2 border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
-                        onClick={() =>
-                          handleCriteriaSelectionFromFiltered(criteria.id)
-                        }
+                        onClick={() => handleKnowledgeBaseSelection(kb.id)}
                       >
                         <div className="flex items-center gap-4 mb-4">
                           <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
@@ -1246,11 +1378,14 @@ export default function ChatAreaEnhanced({
                           </div>
                           <div className="flex-1">
                             <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                              {criteria.name}
+                              {kb.educationalBoard} {kb.subject}
                               <Sparkles className="w-5 h-5 text-blue-600" />
                             </h4>
                             <p className="text-gray-600 font-medium mb-2">
-                              {criteria.description}
+                              {kb.name.includes('AA') ? 'Analysis & Approaches' : 'Applications & Interpretation'}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {kb.description}
                             </p>
                           </div>
                         </div>
@@ -1259,26 +1394,97 @@ export default function ChatAreaEnhanced({
                           <div className="flex items-center justify-between text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                               <Crown className="w-4 h-4" />
-                              {criteria.educationalBoard}
+                              {kb.level}
                             </span>
                             <span className="flex items-center gap-1">
                               <BookOpen className="w-4 h-4" />
-                              {criteria.level}
+                              {kb.fileCount} files
                             </span>
                           </div>
-
                           <div className="flex items-center justify-between text-xs text-gray-400">
-                            <span>{criteria.totalChunks} chunks</span>
-                            <span>
-                              {criteria.totalTokens.toLocaleString()} tokens
-                            </span>
+                            <span>{kb.totalChunks} chunks</span>
+                            <span>{kb.totalTokens} tokens</span>
                           </div>
                         </div>
 
                         <div className="mt-4 flex items-center justify-center">
-                          <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl">
+                          <Button 
+                            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl"
+                            disabled={isLoadingKnowledgeBase}
+                          >
                             <GraduationCap className="w-4 h-4 mr-2" />
-                            Start Learning
+                            {isLoadingKnowledgeBase ? "Loading..." : `Select ${kb.educationalBoard} ${kb.subject}`}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* Step 2: Level Selection */
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                      Step 2: Choose Your Level
+                    </h3>
+                    <p className="text-gray-600">
+                      Select SL or HL for {knowledgeBases.find(kb => kb.id === selectedKnowledgeBase)?.name || 'your selected tutor'}
+                    </p>
+                    <Button
+                      onClick={handleBackToKnowledgeBaseSelection}
+                      variant="outline"
+                      className="mt-2"
+                    >
+                      ← Back to Subjects
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {availableLevels.map((level) => (
+                      <div
+                        key={level.id}
+                        className="p-6 rounded-2xl border-2 border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                        onClick={() => handleLevelSelection(level.id)}
+                      >
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
+                            <Database className="w-8 h-8" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                              {level.name}
+                              <Sparkles className="w-5 h-5 text-blue-600" />
+                            </h4>
+                            <p className="text-gray-600 font-medium mb-2">
+                              {level.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Crown className="w-4 h-4" />
+                              {level.level}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <BookOpen className="w-4 h-4" />
+                              {level.fileCount} files
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-400">
+                            <span>{level.totalChunks} chunks</span>
+                            <span>{level.totalTokens} tokens</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-center">
+                          <Button 
+                            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded-xl"
+                            disabled={isLoadingKnowledgeBase}
+                          >
+                            <GraduationCap className="w-4 h-4 mr-2" />
+                            {isLoadingKnowledgeBase ? "Loading..." : `Select ${level.level} Level`}
                           </Button>
                         </div>
                       </div>

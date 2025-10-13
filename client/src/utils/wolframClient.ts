@@ -18,8 +18,8 @@ export function parsePlotQuery(text: string): string | null {
   match = normalizedText.match(/^(?:show me|create|generate|make|display|illustrate|demonstrate)\s+(.+)/i);
   if (match) return `plot ${match[1]}`;
   
-  // "Explain with" patterns
-  match = normalizedText.match(/^(?:explain|help with|illustrate|demonstrate|show how)\s+(.+?)(?:\s+with\s+(?:diagram|graph|image|picture|chart|visual))?/i);
+  // "Explain with" patterns - ONLY if it contains "with" for visual context
+  match = normalizedText.match(/^(?:explain|help with|illustrate|demonstrate|show how)\s+(.+?)\s+with\s+(?:diagram|graph|image|picture|chart|visual)/i);
   if (match) return `plot ${match[1]}`;
   
   // Mathematical expressions (equations, functions, etc.)
@@ -65,14 +65,19 @@ export async function processImageWithWolfram(imageFile: File): Promise<{ imageB
 export function generateWolframQuery(text: string): string | null {
   const normalizedText = text.replace(/–/g, "-").replace(/π/gi, "pi").trim().toLowerCase();
   
+  console.log("🔍 generateWolframQuery called with:", text);
+  
   // Try to parse as a direct plot query first
   const plotQuery = parsePlotQuery(text);
-  if (plotQuery) return plotQuery;
+  if (plotQuery) {
+    console.log("✅ parsePlotQuery returned:", plotQuery);
+    return plotQuery;
+  }
   
-  // Handle specific educational requests
-  if (normalizedText.includes('explain') || normalizedText.includes('help with')) {
+  // ONLY handle "explain with" patterns - not general "explain" requests
+  if (normalizedText.includes('explain with') || normalizedText.includes('help with')) {
     // Extract the mathematical concept
-    const conceptMatch = text.match(/(?:explain|help with|illustrate|demonstrate|show how)\s+(.+?)(?:\s+with\s+(?:diagram|graph|image|picture|chart|visual))?/i);
+    const conceptMatch = text.match(/(?:explain with|help with|illustrate|demonstrate|show how)\s+(.+?)(?:\s+with\s+(?:diagram|graph|image|picture|chart|visual))?/i);
     if (conceptMatch) {
       const concept = conceptMatch[1].trim();
       // Try to convert to a plottable expression
@@ -103,66 +108,10 @@ export function generateWolframQuery(text: string): string | null {
     }
   }
   
-  // Handle specific mathematical topics with more detailed queries
-  const mathTopics = {
-    'derivative': 'plot derivative of common functions',
-    'integral': 'plot integral of common functions',
-    'limit': 'plot limit concept with examples',
-    'continuity': 'plot continuous and discontinuous functions',
-    'trigonometry': 'plot sin(x), cos(x), tan(x) from -2π to 2π',
-    'algebra': 'plot polynomial functions',
-    'geometry': 'plot geometric shapes and their properties',
-    'statistics': 'plot normal distribution and other probability distributions',
-    'probability': 'plot probability distributions',
-    'calculus': 'plot calculus concepts and functions',
-    'functions': 'plot various types of functions',
-    'equations': 'plot solutions to equations',
-    'inequalities': 'plot inequality regions',
-    'sequences': 'plot sequence convergence',
-    'series': 'plot series convergence',
-    'vectors': 'plot vector fields and operations',
-    'matrices': 'plot matrix transformations',
-    'complex': 'plot complex number operations',
-    'logarithm': 'plot logarithmic functions',
-    'exponential': 'plot exponential functions',
-    'polynomial': 'plot polynomial functions of various degrees',
-    'quadratic': 'plot quadratic functions and parabolas',
-    'linear': 'plot linear functions and lines',
-    'cubic': 'plot cubic functions',
-    'hyperbola': 'plot hyperbola and its properties',
-    'ellipse': 'plot ellipse and its properties',
-    'parabola': 'plot parabola and its properties',
-    'circle': 'plot circle and its properties',
-    'triangle': 'plot triangle and its properties',
-    'square': 'plot square and its properties',
-    'rectangle': 'plot rectangle and its properties',
-    'polygon': 'plot various polygons',
-    'angle': 'plot angle measurements and relationships',
-    'perimeter': 'plot perimeter calculations',
-    'area': 'plot area calculations',
-    'volume': 'plot volume calculations',
-    'surface area': 'plot surface area calculations',
-    'coordinate': 'plot coordinate geometry',
-    'axis': 'plot coordinate axes and transformations',
-    'slope': 'plot slope and gradient',
-    'intercept': 'plot intercepts and intersections',
-    'vertex': 'plot vertices and critical points',
-    'focus': 'plot foci of conic sections',
-    'eccentricity': 'plot eccentricity of conic sections',
-    'asymptote': 'plot asymptotes of functions',
-    'sine': 'plot sine function and its properties',
-    'cosine': 'plot cosine function and its properties',
-    'tangent': 'plot tangent function and its properties',
-    'logarithmic': 'plot logarithmic functions',
-    'exponential': 'plot exponential functions'
-  };
+  // REMOVED: Broad mathematical topic detection
+  // This was causing conceptual questions to go to WolframAlpha
   
-  for (const [topic, query] of Object.entries(mathTopics)) {
-    if (normalizedText.includes(topic)) {
-      return query;
-    }
-  }
-  
+  console.log("❌ generateWolframQuery returning null - no visual query generated");
   return null;
 }
 
@@ -219,32 +168,67 @@ export function generateContextualWolframQuery(text: string, previousMessages: a
 }
 
 export function detectVisualRequest(text: string): boolean {
-  const visualKeywords = [
-    // Direct visual requests
+  const normalizedText = text.toLowerCase();
+  
+  console.log("🔍 detectVisualRequest called with:", text);
+  
+  // ONLY direct visual requests - these should go to WolframAlpha
+  const directVisualKeywords = [
     'plot', 'graph', 'diagram', 'chart', 'visualize', 'draw', 'sketch', 'image', 'picture',
-    'show me', 'create', 'generate', 'make', 'display', 'illustrate', 'demonstrate',
-    
-    // Mathematical concepts that benefit from visualization
-    'equation', 'formula', 'solve', 'calculate', 'integrate', 'differentiate',
-    'derivative', 'integral', 'function', 'curve', 'parabola', 'circle', 'ellipse',
-    'triangle', 'square', 'rectangle', 'polygon', 'geometry', 'trigonometry', 
-    'algebra', 'calculus', 'statistics', 'probability', 'matrix', 'vector',
-    
-    // Educational visual aids
-    'explain with', 'help with', 'illustrate', 'demonstrate', 'show how',
-    'with diagram', 'with graph', 'with image', 'with picture', 'with chart',
-    'step by step', 'visual', 'graphical', 'pictorial',
-    
-    // Specific mathematical functions and concepts
-    'sine', 'cosine', 'tangent', 'logarithm', 'exponential', 'polynomial',
-    'quadratic', 'linear', 'cubic', 'hyperbola', 'asymptote', 'limit',
-    'continuity', 'differentiation', 'integration', 'series', 'sequence',
-    
-    // Geometric shapes and concepts
-    'angle', 'perimeter', 'area', 'volume', 'surface area', 'coordinate',
-    'axis', 'slope', 'intercept', 'vertex', 'focus', 'eccentricity'
+    'show me', 'create', 'generate', 'make', 'display'
   ];
   
-  const normalizedText = text.toLowerCase();
-  return visualKeywords.some(keyword => normalizedText.includes(keyword));
+  // Check for direct visual requests first
+  if (directVisualKeywords.some(keyword => normalizedText.includes(keyword))) {
+    console.log("✅ Direct visual keyword detected:", directVisualKeywords.find(k => normalizedText.includes(k)));
+    return true;
+  }
+  
+  // Check for "explain with" patterns - these should go to WolframAlpha
+  const explainWithPatterns = [
+    'explain with', 'help with', 'illustrate', 'demonstrate', 'show how',
+    'with diagram', 'with graph', 'with image', 'with picture', 'with chart',
+    'with visual', 'with graphical', 'with pictorial'
+  ];
+  
+  if (explainWithPatterns.some(pattern => normalizedText.includes(pattern))) {
+    console.log("✅ Explain with pattern detected:", explainWithPatterns.find(p => normalizedText.includes(p)));
+    return true;
+  }
+  
+  // Check for mathematical expressions that can be plotted
+  const mathExpressionPatterns = [
+    // Function definitions - must start with these patterns
+    /^y\s*=\s*[^.!?]*/i,
+    /^f\(x\)\s*=\s*[^.!?]*/i,
+    /^equation\s*:?\s*[^.!?]*/i,
+    /^function\s*:?\s*[^.!?]*/i,
+    /^formula\s*:?\s*[^.!?]*/i,
+    
+    // Mathematical functions - must be standalone
+    /^(?:sin|cos|tan|log|ln|exp|sqrt|abs|mod|floor|ceil)\s*\([^)]+\)$/i,
+    
+    // Polynomial expressions - must be standalone mathematical expressions
+    /^[+-]?\d*x\^?\d*(?:\s*[+-]\s*\d*x\^?\d*)*(?:\s*[+-]\s*\d+)?$/i,
+    
+    // Geometric shapes - must start with these patterns
+    /^(?:circle|ellipse|parabola|hyperbola|triangle|square|rectangle|polygon)\s*(?:with\s+)?(?:radius|center|vertices|sides|angles?)?\s*[^.!?]*/i
+  ];
+  
+  for (let i = 0; i < mathExpressionPatterns.length; i++) {
+    if (mathExpressionPatterns[i].test(text)) {
+      console.log("✅ Mathematical expression pattern detected:", mathExpressionPatterns[i], "matched text:", text);
+      return true;
+    }
+  }
+  
+  // Check for step-by-step visual requests
+  if (normalizedText.includes('step by step') && 
+      (normalizedText.includes('explain') || normalizedText.includes('help'))) {
+    console.log("✅ Step by step visual request detected");
+    return true;
+  }
+  
+  console.log("❌ No visual request detected - going to OpenAI");
+  return false;
 }

@@ -7,60 +7,90 @@ import { generateEmbedding, generateResponse } from '../config/openai.js';
 import { getIndex } from '../config/pinecone.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { checkUsage } from '../checkUsageMiddleware.js';
-import { getHardcodedCriteria, isHardcodedCriteria } from '../utils/hardcodedCriteria.js';
+import { 
+  getHardcodedCriteria, 
+  isHardcodedCriteria
+} from '../utils/hardcodedCriteria.js';
 
 const router = express.Router();
+
+// Get available knowledge bases
+router.get('/knowledge-bases', authenticateToken, async (req: any, res: any) => {
+  try {
+    const knowledgeBases = await EducationalCriteria.find({})
+      .select('name description educationalBoard subject level totalChunks totalTokens createdAt updatedAt files.originalName files.size files.uploadDate')
+      .sort({ updatedAt: -1 });
+
+    res.json({
+      success: true,
+      criteria: knowledgeBases.map(kb => ({
+        id: kb._id,
+        name: kb.name,
+        description: kb.description,
+        educationalBoard: kb.educationalBoard,
+        subject: kb.subject,
+        level: kb.level,
+        totalChunks: kb.totalChunks,
+        totalTokens: kb.totalTokens,
+        fileCount: kb.files.length,
+        createdAt: kb.createdAt,
+        updatedAt: kb.updatedAt,
+        files: kb.files.map((file: any) => ({
+          originalName: file.originalName,
+          size: file.size,
+          uploadDate: file.uploadDate
+        }))
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching knowledge bases:', error);
+    res.status(500).json({ error: 'Failed to fetch knowledge bases' });
+  }
+});
+
 
 // Create new chat session
 router.post('/session', authenticateToken, async (req: any, res: any) => {
   try {
     const userId = req.user.id;
-    const { criteriaId, title } = req.body;
+    const { knowledgeBaseId, title, level } = req.body;
 
-    if (!criteriaId) {
-      return res.status(400).json({ error: 'Educational criteria ID is required' });
+    // Validate required parameters
+    if (!knowledgeBaseId) {
+      return res.status(400).json({ error: 'Knowledge Base ID is required' });
     }
 
-    // Check if it's a hardcoded criteria or database criteria
-    let criteria;
-    if (isHardcodedCriteria(criteriaId)) {
-      criteria = getHardcodedCriteria(criteriaId);
-    } else {
-      criteria = await EducationalCriteria.findById(criteriaId);
+    // Get the knowledge base from database
+    const knowledgeBase = await EducationalCriteria.findById(knowledgeBaseId);
+    if (!knowledgeBase) {
+      return res.status(404).json({ error: 'Knowledge Base not found' });
     }
+
+    // Extract tutor type from the knowledge base name or level
+    const tutorType = knowledgeBase.name.includes('AA') || knowledgeBase.level.includes('AA') ? 'AA' : 
+                     knowledgeBase.name.includes('AI') || knowledgeBase.level.includes('AI') ? 'AI' : 'Unknown';
     
-    if (!criteria) {
-      return res.status(404).json({ error: 'Educational criteria not found' });
-    }
+    // Use the level passed from frontend, or extract from knowledge base as fallback
+    const selectedLevel = level || (knowledgeBase.level.includes('SL') ? 'SL' : knowledgeBase.level.includes('HL') ? 'HL' : 'Unknown');
 
-    // Create chat room first
-    const roomId = uuidv4();
-    const chatRoom = new ChatRoom({
-      roomId,
-      userId,
-      title: title || `${criteria.name} Chat`,
-      type: 'educational-criteria',
-      criteriaId,
-      messageCount: 0,
-      lastMessageAt: new Date(),
-      ttsSettings: {
-        selectedVoiceId: 'alloy',
-        autoPlayVoice: false,
-        volume: 0.7
-      }
-    });
-
-    await chatRoom.save();
-
-    // Create chat session
+    // Create chat session with knowledge base
     const sessionId = uuidv4();
     const chatSession = new ChatSession({
       sessionId,
       userId,
-      roomId,
-      criteriaId,
-      title: title || `${criteria.name} Chat`,
-      messages: []
+      roomId: null, // Room will be linked later by frontend
+      criteriaId: knowledgeBaseId, // Use knowledge base ID directly
+      title: title || `${knowledgeBase.name}`,
+      messages: [],
+      // Store additional metadata
+      metadata: {
+        knowledgeBaseId: knowledgeBaseId,
+        tutorType: tutorType,
+        level: selectedLevel,
+        educationalBoard: knowledgeBase.educationalBoard,
+        subject: knowledgeBase.subject,
+        fullLevel: `${tutorType} ${selectedLevel}`
+      }
     });
 
     await chatSession.save();
@@ -69,12 +99,14 @@ router.post('/session', authenticateToken, async (req: any, res: any) => {
       success: true,
       session: {
         sessionId,
-        roomId,
-        criteriaId,
-        criteriaName: criteria.name,
-        educationalBoard: criteria.educationalBoard,
-        subject: criteria.subject,
-        level: criteria.level,
+        knowledgeBaseId: knowledgeBaseId,
+        tutorName: `IB Mathematics ${tutorType} Tutor`,
+        criteriaName: knowledgeBase.name,
+        educationalBoard: knowledgeBase.educationalBoard,
+        subject: knowledgeBase.subject,
+        tutorType: tutorType,
+        level: selectedLevel,
+        fullLevel: `${tutorType} ${selectedLevel}`,
         title: chatSession.title,
         createdAt: chatSession.createdAt
       }
@@ -102,29 +134,61 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
       return res.status(404).json({ error: "Chat session not found" });
     }
 
-    // Get criteria information (hardcoded or from database)
-    let criteria;
-    if (isHardcodedCriteria(chatSession.criteriaId)) {
-      criteria = getHardcodedCriteria(chatSession.criteriaId);
-      console.log(`🎯 Using hardcoded criteria: ${criteria.name} (${criteria.level})`);
+    // Get knowledge base information
+    let knowledgeBase;
+    
+    // Check if this is a new format session (with metadata)
+    if (chatSession.metadata && chatSession.metadata.knowledgeBaseId) {
+      knowledgeBase = await EducationalCriteria.findById(chatSession.metadata.knowledgeBaseId);
     } else {
-      criteria = await EducationalCriteria.findById(chatSession.criteriaId);
-      console.log(`🎯 Using database criteria: ${criteria?.name} (${criteria?.level})`);
+      // Legacy format - try to get from criteriaId
+      if (isHardcodedCriteria(chatSession.criteriaId)) {
+        const legacyCriteria = getHardcodedCriteria(chatSession.criteriaId);
+        if (legacyCriteria) {
+          // Map legacy criteria to knowledge base structure
+          knowledgeBase = {
+            _id: legacyCriteria.id,
+            name: legacyCriteria.name,
+            description: legacyCriteria.description,
+            educationalBoard: legacyCriteria.educationalBoard,
+            subject: legacyCriteria.subject,
+            level: legacyCriteria.level,
+            totalChunks: legacyCriteria.totalChunks,
+            totalTokens: legacyCriteria.totalTokens
+          };
+        }
+      } else {
+        // Get from database
+        knowledgeBase = await EducationalCriteria.findById(chatSession.criteriaId);
+      }
     }
     
-    if (!criteria) {
-      return res.status(404).json({ error: "Educational criteria not found" });
+    if (!knowledgeBase) {
+      return res.status(404).json({ error: "Knowledge Base not found" });
+    }
+
+    // Get tutor type and level from session metadata (preferred) or extract from knowledge base
+    let tutorType, level;
+    
+    if (chatSession.metadata && chatSession.metadata.tutorType && chatSession.metadata.level) {
+      // Use stored metadata from session creation
+      tutorType = chatSession.metadata.tutorType;
+      level = chatSession.metadata.level;
+      console.log('Using session metadata:', { tutorType, level });
+    } else {
+      // Fallback: extract from knowledge base
+      tutorType = knowledgeBase.name.includes('AA') || knowledgeBase.level.includes('AA') ? 'AA' : 
+                 knowledgeBase.name.includes('AI') || knowledgeBase.level.includes('AI') ? 'AI' : 'Unknown';
+      level = knowledgeBase.level.includes('SL') ? 'SL' : knowledgeBase.level.includes('HL') ? 'HL' : 'Unknown';
+      console.log('Using fallback extraction:', { tutorType, level, knowledgeBaseName: knowledgeBase.name, knowledgeBaseLevel: knowledgeBase.level });
     }
     
-    console.log(`📚 Teaching level: ${criteria.level}, Subject: ${criteria.subject}`);
-
-
     const startTime = Date.now();
 
     // Generate embedding for user message to find relevant instructional criteria
     const queryEmbedding = await generateEmbedding(message);
 
-    // Query Pinecone for instructional criteria
+    // Query Pinecone for instructional criteria using the knowledge base
     let searchResponse: any = { matches: [] };
     let pineconeAvailable = false;
 
@@ -136,7 +200,7 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
           topK: 5, // Get fewer, more focused instructional criteria
           includeMetadata: true,
           filter: {
-            criteriaId: criteria.id,
+            criteriaId: knowledgeBase._id, // Use knowledge base ID
           },
         });
 
@@ -173,7 +237,7 @@ router.post("/message", authenticateToken, checkUsage, async (req: any, res: any
       const messages = [
         {
           role: "system",
-          content: `You are a friendly AI tutor specialized in ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} education. 
+          content: `You are a friendly AI tutor specialized in ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${tutorType} education at ${level} level.
 
 You can handle both casual conversation and educational questions:
 
@@ -181,32 +245,35 @@ FOR CASUAL CONVERSATION (greetings, how are you, etc.):
 - Be warm, friendly, and conversational
 - Keep responses brief and natural
 - Mention that you're ready to help with educational questions
-- Examples: "Hi! I'm doing great, thank you! I'm here to help you with ${criteria.subject} ${criteria.level} questions. What would you like to learn about?"
+- Examples: "Hi! I'm doing great, thank you! I'm here to help you with ${knowledgeBase.subject} ${tutorType} ${level} questions. What would you like to learn about?"
 
 FOR EDUCATIONAL QUESTIONS:
-- You are ONLY authorized to teach ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} level content
-- If a question is beyond ${criteria.level} level, politely decline and suggest the appropriate level
-- Use your knowledge of ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} curriculum ONLY
-- Follow the instructional guidelines and teaching approaches from the educational criteria
+- You are ONLY authorized to teach ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${tutorType} ${level} level content
+- If a question is beyond ${level} level, politely decline and suggest the appropriate level
+- Use your knowledge of ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${tutorType} curriculum at ${level} level ONLY
+- Follow the instructional guidelines and teaching approaches from the knowledge base
 - Provide clear, structured explanations (steps, bullet points, equations)
 - Keep answers educational and aligned with the curriculum standards
 
 LEVEL RESTRICTION POLICY:
-- For ${criteria.level}: Only answer questions appropriate for this level
-- If asked about higher level content, say: "This question is beyond ${criteria.level} level. For this topic, you would need ${criteria.level === 'AA SL' ? 'AA HL' : criteria.level === 'AI SL' ? 'AI HL' : 'a higher level'} instruction."
+- For ${level}: Only answer questions appropriate for this level
+- If asked about higher level content, say: "This question is beyond your selected Criteria (${level}). For this topic, you would need ${level === 'SL' ? 'HL' : 'a higher level'} level instruction."
+- Always stay within the scope of ${level} curriculum
 
-SPECIFIC LEVEL RESTRICTIONS:
-${criteria.level === 'AA SL' ? 
-  '- AA SL: Focus on basic calculus, algebra, functions, trigonometry, statistics, and probability' :
-  criteria.level === 'AA HL' ?
-  '- AA HL: Can handle advanced calculus, complex analysis, advanced algebra, and proof techniques' :
-  criteria.level === 'AI SL' ?
-  '- AI SL: Focus on applied mathematics, statistics, modeling, and real-world applications' :
-  '- AI HL: Can handle advanced applied mathematics, complex modeling, and advanced statistics'
+TUTOR-SPECIFIC FOCUS:
+${tutorType === 'AA' ? 
+  '- Analysis & Approaches: Focus on pure mathematics, calculus, algebra, functions, and analytical methods' :
+  '- Applications & Interpretation: Focus on applied mathematics, statistics, modeling, and real-world applications'
 }
 
-Educational Criteria Guidelines:
-${instructionalContext || "Use standard ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} teaching approaches."}`,
+LEVEL-SPECIFIC RESTRICTIONS:
+${level === 'SL' ? 
+  '- SL: Focus on fundamental concepts, basic applications, and standard problem-solving methods' :
+  '- HL: Can handle advanced concepts, complex applications, and sophisticated problem-solving techniques'
+}
+
+Knowledge Base Guidelines:
+${instructionalContext || `Use the specific guidelines and content from the ${knowledgeBase.name} knowledge base. Follow ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${knowledgeBase.level} teaching approaches and curriculum standards.`}`,
         },
         { role: "user", content: message },
       ];
@@ -216,35 +283,37 @@ ${instructionalContext || "Use standard ${criteria.educationalBoard} ${criteria.
       const messages = [
         {
           role: "system",
-          content: `You are an AI tutor specialized in ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} education.
+          content: `You are an AI tutor specialized in ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${tutorType} education at ${level} level.
 
 CRITICAL INSTRUCTIONS:
-- You are ONLY authorized to teach ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} level content
-- If a question is beyond ${criteria.level} level (e.g., HL content when teaching SL, or advanced topics not covered in ${criteria.level}), politely decline and suggest the appropriate level
-- Use your knowledge of ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} curriculum ONLY
+- You are ONLY authorized to teach ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${tutorType} ${level} level content
+- If a question is beyond ${level} level, politely decline and suggest the appropriate level
+- Use your knowledge of ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${tutorType} curriculum at ${level} level ONLY
 - Follow the instructional guidelines and teaching approaches provided below
 - Provide clear, structured explanations (steps, bullet points, equations)
 - Keep answers educational and aligned with the curriculum standards
-- Use appropriate terminology and concepts for ${criteria.level} level
-- Follow ${criteria.educationalBoard} assessment criteria and command terms
+- Use appropriate terminology and concepts for ${level} level
+- Follow ${knowledgeBase.educationalBoard} assessment criteria and command terms
 
 LEVEL RESTRICTION POLICY:
-- For ${criteria.level}: Only answer questions appropriate for this level
-- If asked about higher level content, say: "This question is beyond ${criteria.level} level. For this topic, you would need ${criteria.level === 'AA SL' ? 'AA HL' : criteria.level === 'AI SL' ? 'AI HL' : 'a higher level'} instruction."
-- Always stay within the scope of ${criteria.level} curriculum
+- For ${level}: Only answer questions appropriate for this level
+- If asked about higher level content, say: "This question is beyond your selected Criteria (${level}). For this topic, you would need ${level === 'SL' ? 'HL' : 'a higher level'} level instruction."
+- Always stay within the scope of ${level} curriculum
 
-SPECIFIC LEVEL RESTRICTIONS:
-${criteria.level === 'AA SL' ? 
-  '- AA SL: Focus on basic calculus, algebra, functions, trigonometry, statistics, and probability' :
-  criteria.level === 'AA HL' ?
-  '- AA HL: Can handle advanced calculus, complex analysis, advanced algebra, and proof techniques' :
-  criteria.level === 'AI SL' ?
-  '- AI SL: Focus on applied mathematics, statistics, modeling, and real-world applications' :
-  '- AI HL: Can handle advanced applied mathematics, complex modeling, and advanced statistics'
+TUTOR-SPECIFIC FOCUS:
+${tutorType === 'AA' ? 
+  '- Analysis & Approaches: Focus on pure mathematics, calculus, algebra, functions, and analytical methods' :
+  '- Applications & Interpretation: Focus on applied mathematics, statistics, modeling, and real-world applications'
 }
 
-Educational Criteria Guidelines:
-${instructionalContext || "Use standard ${criteria.educationalBoard} ${criteria.subject} ${criteria.level} teaching approaches and curriculum standards."}`,
+LEVEL-SPECIFIC RESTRICTIONS:
+${level === 'SL' ? 
+  '- SL: Focus on fundamental concepts, basic applications, and standard problem-solving methods' :
+  '- HL: Can handle advanced concepts, complex applications, and sophisticated problem-solving techniques'
+}
+
+Knowledge Base Guidelines:
+${instructionalContext || `Use the specific guidelines and content from the ${knowledgeBase.name} knowledge base. Follow ${knowledgeBase.educationalBoard} ${knowledgeBase.subject} ${knowledgeBase.level} teaching approaches and curriculum standards.`}`,
         },
         { role: "user", content: message },
       ];
@@ -260,7 +329,10 @@ ${instructionalContext || "Use standard ${criteria.educationalBoard} ${criteria.
       content: message,
       isVoice,
       metadata: {
-        criteria: criteria.name,
+        knowledgeBase: knowledgeBase.name,
+        tutorType: tutorType,
+        level: level,
+        fullLevel: knowledgeBase.level,
         responseTime: 0,
       },
     });
@@ -269,7 +341,10 @@ ${instructionalContext || "Use standard ${criteria.educationalBoard} ${criteria.
       role: "assistant",
       content: response,
       metadata: {
-        criteria: criteria.name,
+        knowledgeBase: knowledgeBase.name,
+        tutorType: tutorType,
+        level: level,
+        fullLevel: knowledgeBase.level,
         tokensUsed: response.length,
         responseTime,
         criteriaUsed: hasRelevantCriteria,
@@ -314,21 +389,56 @@ router.get('/session/:sessionId', authenticateToken, async (req: any, res: any) 
     const { sessionId } = req.params;
     const userId = req.user.id;
 
-    const chatSession = await ChatSession.findOne({ sessionId, userId }).populate('criteriaId');
+    const chatSession = await ChatSession.findOne({ sessionId, userId });
     if (!chatSession) {
       return res.status(404).json({ error: 'Chat session not found' });
     }
+
+    // Get knowledge base information
+    let knowledgeBase;
+    
+    // Check if this is a new format session (with metadata)
+    if (chatSession.metadata && chatSession.metadata.knowledgeBaseId) {
+      knowledgeBase = await EducationalCriteria.findById(chatSession.metadata.knowledgeBaseId);
+    } else {
+      // Legacy format - try to get from criteriaId
+      if (isHardcodedCriteria(chatSession.criteriaId)) {
+        const legacyCriteria = getHardcodedCriteria(chatSession.criteriaId);
+        if (legacyCriteria) {
+          knowledgeBase = {
+            _id: legacyCriteria.id,
+            name: legacyCriteria.name,
+            description: legacyCriteria.description,
+            educationalBoard: legacyCriteria.educationalBoard,
+            subject: legacyCriteria.subject,
+            level: legacyCriteria.level
+          };
+        }
+      } else {
+        knowledgeBase = await EducationalCriteria.findById(chatSession.criteriaId);
+      }
+    }
+
+    if (!knowledgeBase) {
+      return res.status(404).json({ error: 'Knowledge Base not found' });
+    }
+
+    const tutorType = knowledgeBase.level.includes('AA') ? 'AA' : knowledgeBase.level.includes('AI') ? 'AI' : 'Unknown';
+    const level = knowledgeBase.level.includes('SL') ? 'SL' : knowledgeBase.level.includes('HL') ? 'HL' : 'Unknown';
 
     res.json({
       success: true,
       session: {
         sessionId: chatSession.sessionId,
         roomId: chatSession.roomId,
-        criteriaId: criteria.id,
-        criteriaName: criteria.name,
-        educationalBoard: criteria.educationalBoard,
-        subject: criteria.subject,
-        level: criteria.level,
+        knowledgeBaseId: knowledgeBase._id,
+        tutorName: `IB Mathematics ${tutorType} Tutor`,
+        criteriaName: knowledgeBase.name,
+        educationalBoard: knowledgeBase.educationalBoard,
+        subject: knowledgeBase.subject,
+        tutorType: tutorType,
+        level: level,
+        fullLevel: knowledgeBase.level,
         title: chatSession.title,
         messages: chatSession.messages,
         totalTokensUsed: chatSession.totalTokensUsed,
@@ -354,21 +464,56 @@ router.get('/room/:roomId', authenticateToken, async (req: any, res: any) => {
       return res.status(404).json({ error: 'Chat room not found' });
     }
 
-    const chatSession = await ChatSession.findOne({ roomId, userId }).populate('criteriaId');
+    const chatSession = await ChatSession.findOne({ roomId, userId });
     if (!chatSession) {
       return res.status(404).json({ error: 'Chat session not found' });
     }
+
+    // Get knowledge base information
+    let knowledgeBase;
+    
+    // Check if this is a new format session (with metadata)
+    if (chatSession.metadata && chatSession.metadata.knowledgeBaseId) {
+      knowledgeBase = await EducationalCriteria.findById(chatSession.metadata.knowledgeBaseId);
+    } else {
+      // Legacy format - try to get from criteriaId
+      if (isHardcodedCriteria(chatSession.criteriaId)) {
+        const legacyCriteria = getHardcodedCriteria(chatSession.criteriaId);
+        if (legacyCriteria) {
+          knowledgeBase = {
+            _id: legacyCriteria.id,
+            name: legacyCriteria.name,
+            description: legacyCriteria.description,
+            educationalBoard: legacyCriteria.educationalBoard,
+            subject: legacyCriteria.subject,
+            level: legacyCriteria.level
+          };
+        }
+      } else {
+        knowledgeBase = await EducationalCriteria.findById(chatSession.criteriaId);
+      }
+    }
+
+    if (!knowledgeBase) {
+      return res.status(404).json({ error: 'Knowledge Base not found' });
+    }
+
+    const tutorType = knowledgeBase.level.includes('AA') ? 'AA' : knowledgeBase.level.includes('AI') ? 'AI' : 'Unknown';
+    const level = knowledgeBase.level.includes('SL') ? 'SL' : knowledgeBase.level.includes('HL') ? 'HL' : 'Unknown';
 
     res.json({
       success: true,
       session: {
         sessionId: chatSession.sessionId,
         roomId: chatSession.roomId,
-        criteriaId: criteria.id,
-        criteriaName: criteria.name,
-        educationalBoard: criteria.educationalBoard,
-        subject: criteria.subject,
-        level: criteria.level,
+        knowledgeBaseId: knowledgeBase._id,
+        tutorName: `IB Mathematics ${tutorType} Tutor`,
+        criteriaName: knowledgeBase.name,
+        educationalBoard: knowledgeBase.educationalBoard,
+        subject: knowledgeBase.subject,
+        tutorType: tutorType,
+        level: level,
+        fullLevel: knowledgeBase.level,
         title: chatSession.title,
         messages: chatSession.messages,
         totalTokensUsed: chatSession.totalTokensUsed,
@@ -393,8 +538,7 @@ router.get('/sessions', authenticateToken, async (req: any, res: any) => {
     const skip = (pageNum - 1) * limitNum;
 
     const sessions = await ChatSession.find({ userId })
-      .populate('criteriaId', 'name educationalBoard subject level')
-      .select('sessionId roomId criteriaId title messages totalTokensUsed createdAt lastActivity')
+      .select('sessionId roomId criteriaId title messages totalTokensUsed createdAt lastActivity metadata')
       .sort({ lastActivity: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -403,19 +547,72 @@ router.get('/sessions', authenticateToken, async (req: any, res: any) => {
 
     res.json({
       success: true,
-      sessions: sessions.map(session => ({
-        sessionId: session.sessionId,
-        roomId: session.roomId,
-        criteriaId: session.criteriaId._id,
-        criteriaName: session.criteriaId.name,
-        educationalBoard: session.criteriaId.educationalBoard,
-        subject: session.criteriaId.subject,
-        level: session.criteriaId.level,
-        title: session.title,
-        messageCount: session.messages.length,
-        totalTokensUsed: session.totalTokensUsed,
-        createdAt: session.createdAt,
-        lastActivity: session.lastActivity
+      sessions: await Promise.all(sessions.map(async (session) => {
+        // Get knowledge base information
+        let knowledgeBase;
+        
+        // Check if this is a new format session (with metadata)
+        if (session.metadata && session.metadata.knowledgeBaseId) {
+          knowledgeBase = await EducationalCriteria.findById(session.metadata.knowledgeBaseId);
+        } else {
+          // Legacy format - try to get from criteriaId
+          if (isHardcodedCriteria(session.criteriaId)) {
+            const legacyCriteria = getHardcodedCriteria(session.criteriaId);
+            if (legacyCriteria) {
+              knowledgeBase = {
+                _id: legacyCriteria.id,
+                name: legacyCriteria.name,
+                description: legacyCriteria.description,
+                educationalBoard: legacyCriteria.educationalBoard,
+                subject: legacyCriteria.subject,
+                level: legacyCriteria.level
+              };
+            }
+          } else {
+            knowledgeBase = await EducationalCriteria.findById(session.criteriaId);
+          }
+        }
+
+        if (!knowledgeBase) {
+          return {
+            sessionId: session.sessionId,
+            roomId: session.roomId,
+            knowledgeBaseId: null,
+            tutorName: 'Unknown Tutor',
+            criteriaName: 'Unknown Criteria',
+            educationalBoard: 'Unknown',
+            subject: 'Unknown',
+            tutorType: 'Unknown',
+            level: 'Unknown',
+            fullLevel: 'Unknown',
+            title: session.title,
+            messageCount: session.messages.length,
+            totalTokensUsed: session.totalTokensUsed,
+            createdAt: session.createdAt,
+            lastActivity: session.lastActivity
+          };
+        }
+
+        const tutorType = knowledgeBase.level.includes('AA') ? 'AA' : knowledgeBase.level.includes('AI') ? 'AI' : 'Unknown';
+        const level = knowledgeBase.level.includes('SL') ? 'SL' : knowledgeBase.level.includes('HL') ? 'HL' : 'Unknown';
+
+        return {
+          sessionId: session.sessionId,
+          roomId: session.roomId,
+          knowledgeBaseId: knowledgeBase._id,
+          tutorName: `IB Mathematics ${tutorType} Tutor`,
+          criteriaName: knowledgeBase.name,
+          educationalBoard: knowledgeBase.educationalBoard,
+          subject: knowledgeBase.subject,
+          tutorType: tutorType,
+          level: level,
+          fullLevel: knowledgeBase.level,
+          title: session.title,
+          messageCount: session.messages.length,
+          totalTokensUsed: session.totalTokensUsed,
+          createdAt: session.createdAt,
+          lastActivity: session.lastActivity
+        };
       })),
       pagination: {
         page: pageNum,
@@ -497,6 +694,39 @@ router.post('/new-chat', authenticateToken, async (req: any, res: any) => {
   } catch (error) {
     console.error('Error creating new chat:', error);
     res.status(500).json({ error: 'Failed to create new chat' });
+  }
+});
+
+// Update chat session
+router.put('/session/:sessionId', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user.id;
+    const { roomId } = req.body;
+
+    const chatSession = await ChatSession.findOneAndUpdate(
+      { sessionId, userId },
+      { roomId },
+      { new: true }
+    );
+
+    if (!chatSession) {
+      return res.status(404).json({ error: 'Chat session not found' });
+    }
+
+    res.json({
+      success: true,
+      session: {
+        sessionId: chatSession.sessionId,
+        roomId: chatSession.roomId,
+        criteriaId: chatSession.criteriaId,
+        title: chatSession.title,
+        createdAt: chatSession.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error updating chat session:', error);
+    res.status(500).json({ error: 'Failed to update chat session' });
   }
 });
 
